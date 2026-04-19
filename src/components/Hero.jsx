@@ -1,7 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import heroImg from '../assets/hero.png'
 
-function MeshCanvas() {
+const gradientText = {
+  background: 'linear-gradient(135deg, #0369a1 0%, #7dd3fc 100%)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+}
+
+function WaterCanvas() {
   const canvasRef = useRef(null)
   const animRef = useRef(null)
 
@@ -13,86 +22,70 @@ function MeshCanvas() {
     let H = canvas.offsetHeight
     canvas.width = W
     canvas.height = H
+    let t = 0
 
-    const COLS = 20
-    const ROWS = 12
-    let time = 0
+    const NUM_CURRENTS = 14
+    const currents = []
+    for (let i = 0; i < NUM_CURRENTS; i++) {
+      currents.push({
+        baseY: H * ((i + 0.5) / NUM_CURRENTS),
+        amplitude: 6 + (i % 3) * 9 + Math.random() * 8,
+        freq: 0.004 + (i % 4) * 0.001 + Math.random() * 0.001,
+        phase: (i / NUM_CURRENTS) * Math.PI * 2.5,
+        speed: 0.003 + (i % 3) * 0.002,
+        alpha: 0.035 + (i % 4) * 0.015,
+        hue: i % 3,
+      })
+    }
+
+    const NUM_PARTICLES = 50
+    const particles = []
+    for (let i = 0; i < NUM_PARTICLES; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: 0.5 + Math.random() * 1.4,
+        speed: 0.12 + Math.random() * 0.4,
+        alpha: 0.07 + Math.random() * 0.13,
+        hue: i % 3,
+      })
+    }
+
+    const COLORS = ['14,165,233', '6,182,212', '3,105,161']
+    const col = (hue, a) => `rgba(${COLORS[hue]},${a})`
 
     const resize = () => {
       W = canvas.offsetWidth
       H = canvas.offsetHeight
       canvas.width = W
       canvas.height = H
+      currents.forEach((c, i) => { c.baseY = H * ((i + 0.5) / NUM_CURRENTS) })
     }
     window.addEventListener('resize', resize)
 
-    // Pulse rings
-    const pulses = [
-      { r: 0, maxR: Math.max(W, H) * 0.8, speed: 0.4, opacity: 0 },
-      { r: Math.max(W, H) * 0.3, maxR: Math.max(W, H) * 0.8, speed: 0.4, opacity: 0 },
-    ]
-
     const draw = () => {
       ctx.clearRect(0, 0, W, H)
-      time += 0.008
-
-      // Grid lines
-      const cellW = W / COLS
-      const cellH = H / ROWS
-
-      ctx.strokeStyle = 'rgba(0, 102, 255, 0.06)'
-      ctx.lineWidth = 1
-      // Vertical
-      for (let c = 0; c <= COLS; c++) {
-        const x = c * cellW
+      t++
+      for (const c of currents) {
         ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, H)
-        ctx.stroke()
-      }
-      // Horizontal
-      for (let r = 0; r <= ROWS; r++) {
-        const y = r * cellH
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(W, y)
-        ctx.stroke()
-      }
-
-      // Animated dots at intersections
-      for (let c = 0; c <= COLS; c++) {
-        for (let r = 0; r <= ROWS; r++) {
-          const x = c * cellW
-          const y = r * cellH
-          const wave = Math.sin(time + c * 0.4 + r * 0.3) * 0.5 + 0.5
-          const alpha = wave * 0.18 + 0.04
-          ctx.beginPath()
-          ctx.arc(x, y, 1.5, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(0, 212, 255, ${alpha})`
-          ctx.fill()
+        for (let x = 0; x <= W; x += 3) {
+          const y = c.baseY + Math.sin(x * c.freq + t * c.speed + c.phase) * c.amplitude
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
         }
-      }
-
-      // Sonar pulse rings from center
-      const cx = W / 2
-      const cy = H / 2
-      for (const p of pulses) {
-        p.r += p.speed
-        if (p.r > p.maxR) p.r = 0
-
-        const progress = p.r / p.maxR
-        p.opacity = (1 - progress) * 0.12
-
-        ctx.beginPath()
-        ctx.arc(cx, cy, p.r, 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(0, 102, 255, ${p.opacity})`
-        ctx.lineWidth = 1.5
+        ctx.strokeStyle = col(c.hue, c.alpha)
+        ctx.lineWidth = 1.2
         ctx.stroke()
       }
-
+      for (const p of particles) {
+        p.x += p.speed
+        if (p.x > W + 4) p.x = -4
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = col(p.hue, p.alpha)
+        ctx.fill()
+      }
       animRef.current = requestAnimationFrame(draw)
     }
-
     draw()
     return () => {
       window.removeEventListener('resize', resize)
@@ -100,214 +93,239 @@ function MeshCanvas() {
     }
   }, [])
 
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+}
+
+// Floating live data chips shown over the product image
+function DataChip({ label, value, color, style }) {
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
-      style={{ opacity: 0.7 }}
-    />
+    <motion.div
+      animate={{ y: [0, -5, 0] }}
+      transition={{ duration: 3.5 + Math.random(), repeat: Infinity, ease: 'easeInOut' }}
+      style={{
+        position: 'absolute',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 14px',
+        borderRadius: 10,
+        background: 'rgba(2,13,24,0.82)',
+        border: `1px solid ${color}30`,
+        backdropFilter: 'blur(12px)',
+        boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${color}20`,
+        ...style,
+      }}
+    >
+      <motion.span
+        animate={{ opacity: [1, 0.3, 1] }}
+        transition={{ duration: 1.8, repeat: Infinity }}
+        style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 8px ${color}` }}
+      />
+      <div>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(180,220,255,0.4)', lineHeight: 1 }}>
+          {label}
+        </div>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500, color: '#ffffff', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+          {value}
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
 export default function Hero() {
   const ref = useRef(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '30%'])
-  const opacity = useTransform(scrollYProgress, [0, 0.6], [1, 0])
+  const opacity = useTransform(scrollYProgress, [0, 0.55], [1, 0])
+  const y = useTransform(scrollYProgress, [0, 1], ['0%', '20%'])
 
   return (
     <section
       ref={ref}
-      className="relative w-full overflow-hidden flex flex-col items-center justify-center"
-      style={{ minHeight: '100vh', background: '#050510' }}
+      className="relative w-full overflow-hidden"
+      style={{ minHeight: '100vh', background: '#020d18' }}
     >
-      {/* Mesh background with parallax */}
+      {/* Canvas background */}
       <motion.div className="absolute inset-0" style={{ y }}>
-        <MeshCanvas />
-        {/* Radial gradient overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0,102,255,0.08) 0%, transparent 70%)',
-          }}
-        />
-        {/* Bottom fade */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-32"
-          style={{ background: 'linear-gradient(to bottom, transparent, #050510)' }}
-        />
+        <WaterCanvas />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 70% 60% at 30% 50%, rgba(14,165,233,0.06) 0%, transparent 65%)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-48" style={{ background: 'linear-gradient(to bottom, transparent, #020d18)' }} />
       </motion.div>
 
-      {/* Content */}
+      {/* Split layout */}
       <motion.div
-        className="relative z-10 flex flex-col items-center text-center px-6 max-w-5xl mx-auto"
         style={{ opacity }}
+        className="relative z-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-7xl mx-auto px-6"
+        style={{ opacity, paddingTop: 80, paddingBottom: 40 }}
       >
-        {/* Badge */}
+        {/* LEFT — text content */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-8 inline-flex items-center gap-2 px-4 py-2 rounded-full"
-          style={{
-            background: 'rgba(0,102,255,0.1)',
-            border: '1px solid rgba(0,102,255,0.25)',
-          }}
+          className="flex flex-col items-start text-left"
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
         >
-          <span
-            className="w-2 h-2 rounded-full animate-pulse"
-            style={{ background: '#00d4ff', boxShadow: '0 0 8px #00d4ff' }}
-          />
-          <span style={{ color: '#00d4ff', fontSize: 12, fontFamily: 'Inter, sans-serif', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            APU 3rd Sustainable Hackathon
-          </span>
-        </motion.div>
+          {/* Live badge */}
+          <div
+            className="mb-7 inline-flex items-center gap-2 px-4 py-2 rounded-full"
+            style={{ background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.22)' }}
+          >
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#7dd3fc', boxShadow: '0 0 8px rgba(125,211,252,0.8)' }} />
+            <span style={{ color: '#7dd3fc', fontSize: 11, fontFamily: "'Syne', sans-serif", fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Live · Malaysia Water Intelligence
+            </span>
+          </div>
 
-        {/* Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          style={{
+          {/* Headline */}
+          <h1 style={{
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
             fontWeight: 800,
-            fontSize: 'clamp(36px, 5.5vw, 76px)',
-            lineHeight: 1.05,
-            letterSpacing: '-0.03em',
+            fontSize: 'clamp(36px, 4.5vw, 68px)',
+            lineHeight: 1.06,
+            letterSpacing: '-0.035em',
             color: '#ffffff',
-            maxWidth: 900,
-          }}
-        >
-          CLEAN WATER SHOULD NOT BE{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #0066ff 0%, #00d4ff 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            maxWidth: 620,
           }}>
-            ASSUMED.
-          </span>
-          {' '}IT SHOULD BE{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #0066ff 0%, #00d4ff 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
-            PROVEN.
-          </span>
-        </motion.h1>
+            Clean water should not be{' '}
+            <span style={gradientText}>assumed.</span>
+            <br />
+            It should be{' '}
+            <span style={gradientText}>proven.</span>
+          </h1>
 
-        {/* Subheadline */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          style={{
+          {/* Subheadline */}
+          <p style={{
             fontFamily: 'Inter, sans-serif',
             fontWeight: 300,
-            fontSize: 'clamp(16px, 1.6vw, 20px)',
-            lineHeight: 1.7,
-            color: 'rgba(255,255,255,0.6)',
-            maxWidth: 640,
-            marginTop: 28,
-          }}
-        >
-          TrueFlow deploys AI-powered sensor intelligence across Malaysia's water sources — giving consumers, brands, and regulators the truth in real time.
-        </motion.p>
+            fontSize: 'clamp(15px, 1.4vw, 18px)',
+            lineHeight: 1.75,
+            color: 'rgba(180,220,255,0.55)',
+            maxWidth: 500,
+            marginTop: 24,
+          }}>
+            TrueFlow deploys independent sensor intelligence across Malaysia's water sources — giving consumers, brands, and regulators the truth in real time.
+          </p>
 
-        {/* CTAs */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-wrap items-center justify-center gap-4"
-          style={{ marginTop: 44 }}
-        >
-          <motion.button
-            whileHover={{ scale: 1.03, boxShadow: '0 0 40px rgba(0,102,255,0.5)' }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              background: 'linear-gradient(135deg, #1a1aff 0%, #0066ff 100%)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 10,
-              padding: '14px 32px',
-              fontSize: 15,
-              fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
-              cursor: 'pointer',
-              letterSpacing: '0.01em',
-              boxShadow: '0 0 24px rgba(0,102,255,0.3)',
-            }}
-          >
-            See Live Dashboard
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.03, background: 'rgba(0,102,255,0.12)', borderColor: 'rgba(0,102,255,0.6)' }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              background: 'transparent',
-              color: '#ffffff',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: 10,
-              padding: '14px 32px',
-              fontSize: 15,
-              fontWeight: 500,
-              fontFamily: 'Inter, sans-serif',
-              cursor: 'pointer',
-              letterSpacing: '0.01em',
-            }}
-          >
-            How It Works
-          </motion.button>
+          {/* CTAs */}
+          <div className="flex flex-wrap items-center gap-4" style={{ marginTop: 40 }}>
+            <Link to="/dashboard" style={{ textDecoration: 'none' }}>
+              <motion.div
+                whileHover={{ scale: 1.03, boxShadow: '0 0 40px rgba(14,165,233,0.45)' }}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  background: 'linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)',
+                  color: '#ffffff',
+                  borderRadius: 10,
+                  padding: '13px 30px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  fontFamily: 'Inter, sans-serif',
+                  cursor: 'pointer',
+                  letterSpacing: '0.01em',
+                  boxShadow: '0 0 24px rgba(14,165,233,0.25)',
+                }}
+              >
+                See Live Dashboard
+              </motion.div>
+            </Link>
+            <Link to="/stations" style={{ textDecoration: 'none' }}>
+              <motion.div
+                whileHover={{ scale: 1.03, background: 'rgba(14,165,233,0.08)', borderColor: 'rgba(14,165,233,0.5)' }}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  background: 'transparent',
+                  color: 'rgba(220,240,255,0.8)',
+                  border: '1px solid rgba(14,165,233,0.28)',
+                  borderRadius: 10,
+                  padding: '13px 30px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  fontFamily: 'Inter, sans-serif',
+                  cursor: 'pointer',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                View All Stations
+              </motion.div>
+            </Link>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex flex-wrap items-center gap-8 md:gap-12" style={{ marginTop: 56 }}>
+            {[
+              { value: '3',    unit: 'Parameters', label: 'pH · TDS · Turbidity' },
+              { value: '<5s',  unit: 'Latency',    label: 'Source to dashboard' },
+              { value: '24/7', unit: 'Monitoring', label: 'Continuous uptime' },
+            ].map((stat, i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <span style={{ fontFamily: "'Plus Jakarta Sans', Inter, sans-serif", fontWeight: 800, fontSize: 'clamp(26px, 2.5vw, 36px)', color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                  {stat.value}
+                </span>
+                <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, color: '#0ea5e9', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  {stat.unit}
+                </span>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(180,220,255,0.3)' }}>
+                  {stat.label}
+                </span>
+              </div>
+            ))}
+          </div>
         </motion.div>
 
-        {/* Stats row */}
+        {/* RIGHT — product image */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-wrap items-center justify-center gap-8 md:gap-16"
-          style={{ marginTop: 72 }}
+          className="relative hidden md:flex items-center justify-center"
+          initial={{ opacity: 0, x: 32 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1.0, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
         >
-          {[
-            { value: '3', unit: 'Parameters', label: 'pH · TDS · Turbidity' },
-            { value: '<5s', unit: 'Latency', label: 'Source to dashboard' },
-            { value: '24/7', unit: 'Monitoring', label: 'Continuous uptime' },
-          ].map((stat, i) => (
-            <div key={i} className="flex flex-col items-center gap-1">
-              <span style={{
-                fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-                fontWeight: 800,
-                fontSize: 'clamp(28px, 3vw, 40px)',
-                color: '#ffffff',
-                letterSpacing: '-0.02em',
-                lineHeight: 1,
-              }}>
-                {stat.value}
-              </span>
-              <span style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#0066ff',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-              }}>
-                {stat.unit}
-              </span>
-              <span style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 12,
-                color: 'rgba(255,255,255,0.35)',
-              }}>
-                {stat.label}
-              </span>
-            </div>
-          ))}
+          {/* Glow behind image */}
+          <div style={{
+            position: 'absolute',
+            width: '70%',
+            height: '70%',
+            background: 'radial-gradient(ellipse, rgba(14,165,233,0.18) 0%, transparent 70%)',
+            filter: 'blur(32px)',
+            zIndex: 0,
+          }} />
+
+          {/* Product image */}
+          <motion.div
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ position: 'relative', zIndex: 1 }}
+          >
+            <img
+              src={heroImg}
+              alt="FLO water quality sensor"
+              style={{
+                width: '100%',
+                maxWidth: 480,
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 24px 64px rgba(14,165,233,0.22))',
+              }}
+            />
+          </motion.div>
+
+          {/* Floating data chips */}
+          <DataChip
+            label="pH Level"
+            value="7.21 pH"
+            color="#22c55e"
+            style={{ top: '12%', right: '2%' }}
+          />
+          <DataChip
+            label="Turbidity"
+            value="0.2 NTU"
+            color="#0ea5e9"
+            style={{ bottom: '22%', left: '0%' }}
+          />
+          <DataChip
+            label="Station KLR-04"
+            value="NOMINAL"
+            color="#22c55e"
+            style={{ bottom: '8%', right: '8%' }}
+          />
         </motion.div>
       </motion.div>
 
@@ -318,18 +336,13 @@ export default function Hero() {
         transition={{ duration: 0.6, delay: 1.1 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
-        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, fontFamily: 'Inter, sans-serif', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        <span style={{ color: 'rgba(180,220,255,0.25)', fontSize: 10, fontFamily: "'Syne', sans-serif", fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
           Scroll
         </span>
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: [0.22, 1, 0.36, 1] }}
-          style={{
-            width: 1,
-            height: 32,
-            background: 'linear-gradient(to bottom, rgba(0,102,255,0.8), transparent)',
-            borderRadius: 1,
-          }}
+          style={{ width: 1, height: 32, background: 'linear-gradient(to bottom, rgba(14,165,233,0.8), transparent)', borderRadius: 1 }}
         />
       </motion.div>
     </section>

@@ -150,70 +150,67 @@ function MetricCard({ label, value, unit, status, color, delay }) {
 }
 
 function QualityGauge({ score }) {
-  const angle = -135 + (score / 100) * 270
-  const circumference = 2 * Math.PI * 44
-  const dashOffset = circumference - (score / 100) * (circumference * 0.75)
+  // Semi-circle arc: radius 36, center (50, 50), from 180° to 360°
+  const r = 36
+  const cx = 50
+  const cy = 50
+  const arcLength = Math.PI * r  // half circumference
+  const fill = (score / 100) * arcLength
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative" style={{ width: 100, height: 70 }}>
-        <svg width="100" height="100" viewBox="0 0 100 100" style={{ position: 'absolute', top: 0, left: 0 }}>
-          {/* Background arc */}
-          <circle
-            cx="50" cy="65" r="38"
-            fill="none"
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="6"
-            strokeDasharray={`${2 * Math.PI * 38 * 0.75} ${2 * Math.PI * 38 * 0.25}`}
-            strokeDashoffset={2 * Math.PI * 38 * 0.375}
-            strokeLinecap="round"
-            transform="rotate(180 50 65)"
-          />
-          {/* Score arc */}
-          <motion.circle
-            cx="50" cy="65" r="38"
-            fill="none"
-            stroke="url(#gaugeGrad)"
-            strokeWidth="6"
-            strokeDasharray={`${2 * Math.PI * 38 * 0.75} ${2 * Math.PI * 38 * 0.25}`}
-            strokeDashoffset={2 * Math.PI * 38 * 0.375}
-            strokeLinecap="round"
-            transform="rotate(180 50 65)"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: score / 100 }}
-            transition={{ duration: 1.4, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              filter: 'drop-shadow(0 0 6px rgba(34,197,94,0.6))',
-            }}
-          />
+    <div className="flex flex-col items-center gap-1.5">
+      <div style={{ position: 'relative', width: 100, height: 56 }}>
+        <svg width="100" height="56" viewBox="0 0 100 56" style={{ overflow: 'visible' }}>
           <defs>
-            <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#0066ff" />
+            <linearGradient id="gaugeGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#0ea5e9" />
               <stop offset="100%" stopColor="#22c55e" />
             </linearGradient>
           </defs>
+          {/* Track arc */}
+          <path
+            d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth="7"
+            strokeLinecap="round"
+          />
+          {/* Score arc */}
+          <motion.path
+            d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+            fill="none"
+            stroke="url(#gaugeGrad2)"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={`${arcLength} ${arcLength}`}
+            initial={{ strokeDashoffset: arcLength }}
+            animate={{ strokeDashoffset: arcLength - fill }}
+            transition={{ duration: 1.4, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            style={{ filter: 'drop-shadow(0 0 5px rgba(34,197,94,0.5))' }}
+          />
         </svg>
-        {/* Score label */}
+        {/* Score label centered below arc */}
         <div style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
           textAlign: 'center',
+          lineHeight: 1,
         }}>
           <span style={{
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
             fontWeight: 800,
-            fontSize: 22,
+            fontSize: 20,
             color: '#ffffff',
             letterSpacing: '-0.02em',
           }}>
             {score}
           </span>
-          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, fontFamily: 'Inter, sans-serif' }}>/100</span>
+          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontFamily: 'Inter, sans-serif' }}>/100</span>
         </div>
       </div>
-      <span style={{ color: '#22c55e', fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+      <span style={{ color: '#22c55e', fontSize: 10, fontFamily: "'Syne', sans-serif", fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
         Quality Score
       </span>
     </div>
@@ -228,14 +225,14 @@ export default function Dashboard() {
     <section
       ref={ref}
       className="relative w-full px-6 py-28 md:py-36"
-      style={{ background: '#f8f9ff' }}
+      style={{ background: '#f0f8ff' }}
     >
       <div className="max-w-6xl mx-auto">
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0066ff', marginBottom: 20 }}
+          style={{ fontFamily: "'Syne', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0ea5e9', marginBottom: 20 }}
         >
           Live Dashboard
         </motion.p>
@@ -250,13 +247,18 @@ export default function Dashboard() {
             fontSize: 'clamp(32px, 4vw, 52px)',
             letterSpacing: '-0.03em',
             lineHeight: 1.1,
-            color: '#08080f',
+            color: '#051428',
             maxWidth: 560,
             marginBottom: 60,
           }}
         >
           The Truth,{' '}
-          <span style={{ color: '#0066ff' }}>Visualized.</span>
+          <span style={{
+            background: 'linear-gradient(135deg, #0066ff 0%, #00d4ff 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>Visualized.</span>
         </motion.h2>
 
         {/* Browser mockup */}
@@ -271,7 +273,7 @@ export default function Dashboard() {
           }}
         >
           {/* Browser chrome */}
-          <div style={{ background: '#1a1a2e', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ background: '#0c1e2f', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             <div style={{ display: 'flex', gap: 6 }}>
               {['#ef4444', '#f59e0b', '#22c55e'].map((c, i) => (
                 <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c, opacity: 0.8 }} />
@@ -299,7 +301,7 @@ export default function Dashboard() {
           </div>
 
           {/* Dashboard content */}
-          <div style={{ background: '#0a0a1a', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ background: '#020d18', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Top bar */}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>

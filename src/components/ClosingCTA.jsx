@@ -1,7 +1,15 @@
 import { useRef, useEffect } from 'react'
-import { motion, useInView, useScroll, useTransform } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
+import sdg6Logo from '../assets/SDG6.png'
 
-function ClosingCanvas() {
+const gradientText = {
+  background: 'linear-gradient(135deg, #0369a1 0%, #7dd3fc 100%)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+}
+
+function RippleCanvas() {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -23,30 +31,39 @@ function ClosingCanvas() {
     }
     window.addEventListener('resize', resize)
 
+    // Origin — slightly above center, like a water drop landing
+    const NUM_RINGS = 6
+    const CYCLE = 5.5
+
     const draw = () => {
       ctx.clearRect(0, 0, W, H)
-      t += 0.006
+      t += 0.005
 
-      // Multiple slow expanding rings from center
-      for (let i = 0; i < 5; i++) {
-        const phase = (t + i * 1.2) % 5
-        const r = (phase / 5) * Math.max(W, H) * 0.7
-        const alpha = (1 - phase / 5) * 0.07
+      const ox = W / 2
+      const oy = H * 0.46
+
+      // Expanding water ripple rings
+      for (let i = 0; i < NUM_RINGS; i++) {
+        const phase = ((t + i * (CYCLE / NUM_RINGS)) % CYCLE) / CYCLE
+        const r = phase * Math.max(W, H) * 0.72
+        const alpha = (1 - phase) * (1 - phase) * 0.09
+
         ctx.beginPath()
-        ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(0,102,255,${alpha})`
-        ctx.lineWidth = 1.5
+        ctx.ellipse(ox, oy, r, r * 0.38, 0, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(14,165,233,${alpha})`
+        ctx.lineWidth = 1.2
         ctx.stroke()
       }
 
-      // Grid
-      ctx.strokeStyle = 'rgba(0,102,255,0.04)'
+      // Very faint horizontal water-surface lines
       ctx.lineWidth = 1
-      for (let x = 0; x < W; x += 60) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
-      }
-      for (let y = 0; y < H; y += 60) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
+      for (let row = 0; row < H; row += 55) {
+        const wave = Math.sin(t * 0.4 + row * 0.02) * 2
+        ctx.beginPath()
+        ctx.moveTo(0, row + wave)
+        ctx.lineTo(W, row + wave)
+        ctx.strokeStyle = 'rgba(14,165,233,0.025)'
+        ctx.stroke()
       }
 
       raf = requestAnimationFrame(draw)
@@ -66,22 +83,21 @@ export default function ClosingCTA() {
     <section
       ref={ref}
       className="relative w-full flex flex-col items-center justify-center overflow-hidden"
-      style={{ minHeight: '100vh', background: '#050510' }}
+      style={{ minHeight: '100vh', background: '#020d18' }}
     >
-      <ClosingCanvas />
+      <RippleCanvas />
 
-      {/* Radial glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,102,255,0.1) 0%, transparent 65%)',
+          background: 'radial-gradient(ellipse 70% 60% at 50% 46%, rgba(14,165,233,0.09) 0%, transparent 65%)',
         }}
       />
 
-      {/* Bottom border top fade from previous section */}
+      {/* Fade from previous section */}
       <div
         className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
-        style={{ background: 'linear-gradient(to bottom, #070714, transparent)' }}
+        style={{ background: 'linear-gradient(to bottom, #051a2d, transparent)' }}
       />
 
       <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl mx-auto">
@@ -93,7 +109,7 @@ export default function ClosingCTA() {
           className="flex items-center gap-1 mb-12"
         >
           <span style={{
-            color: '#0066ff',
+            color: '#0ea5e9',
             fontSize: 20,
             fontWeight: 800,
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
@@ -130,24 +146,11 @@ export default function ClosingCTA() {
             maxWidth: 860,
           }}
         >
-          WATER QUALITY.{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #0066ff, #00d4ff)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
-            VISIBLE.
-          </span>
-          {' '}TRANSPARENT.{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #0066ff, #00d4ff)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
-            TRUSTED.
-          </span>
+          Water quality.{' '}
+          <span style={gradientText}>Visible.</span>
+          <br />
+          Transparent.{' '}
+          <span style={gradientText}>Trusted.</span>
         </motion.h2>
 
         {/* Subtext */}
@@ -159,55 +162,41 @@ export default function ClosingCTA() {
             fontFamily: 'Inter, sans-serif',
             fontSize: 18,
             fontWeight: 300,
-            color: 'rgba(255,255,255,0.45)',
+            color: 'rgba(180,220,255,0.45)',
             marginTop: 28,
             letterSpacing: '0.01em',
           }}
         >
-          TrueFlow — APU 3rd Sustainable Hackathon
+          Malaysia's independent water quality monitoring platform
         </motion.p>
 
-        {/* SDG badge + divider */}
+        {/* SDG badge + sensors */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-wrap items-center justify-center gap-6 mt-16"
         >
-          {/* SDG 6 badge */}
           <div
             className="flex items-center gap-3 px-5 py-3 rounded-xl"
             style={{
-              background: 'rgba(0,102,255,0.08)',
-              border: '1px solid rgba(0,102,255,0.2)',
+              background: 'rgba(14,165,233,0.07)',
+              border: '1px solid rgba(14,165,233,0.18)',
             }}
           >
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
-              style={{
-                background: 'linear-gradient(135deg, #0066ff, #00a0c7)',
-                fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-                fontWeight: 800,
-                fontSize: 10,
-                lineHeight: 1.2,
-                textAlign: 'center',
-              }}
-            >
-              SDG<br/>6
-            </div>
+            <img src={sdg6Logo} alt="SDG 6" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
             <div className="flex flex-col">
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: '#0066ff', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 700, color: '#0ea5e9', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 SDG 6
               </span>
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(180,220,255,0.4)' }}>
                 Clean Water & Sanitation
               </span>
             </div>
           </div>
 
-          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.08)' }} />
 
-          {/* Sensor stats */}
           {[
             { label: 'pH', desc: 'Continuous' },
             { label: 'TDS', desc: 'Real-Time' },
@@ -218,7 +207,7 @@ export default function ClosingCTA() {
                 fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
                 fontWeight: 800,
                 fontSize: 18,
-                color: '#00d4ff',
+                color: '#7dd3fc',
                 letterSpacing: '-0.01em',
               }}>
                 {s.label}
@@ -226,7 +215,7 @@ export default function ClosingCTA() {
               <span style={{
                 fontFamily: 'Inter, sans-serif',
                 fontSize: 11,
-                color: 'rgba(255,255,255,0.3)',
+                color: 'rgba(180,220,255,0.3)',
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
               }}>
@@ -245,7 +234,7 @@ export default function ClosingCTA() {
             marginTop: 80,
             fontFamily: 'Inter, sans-serif',
             fontSize: 12,
-            color: 'rgba(255,255,255,0.2)',
+            color: 'rgba(180,220,255,0.2)',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
           }}
