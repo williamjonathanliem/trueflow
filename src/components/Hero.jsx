@@ -155,7 +155,7 @@ export default function Hero() {
       {/* Split layout */}
       <motion.div
         style={{ opacity }}
-        className="relative z-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-7xl mx-auto px-6"
+        className="relative z-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-7xl mx-auto px-4 sm:px-6"
         style={{ opacity, paddingTop: 80, paddingBottom: 40 }}
       >
         {/* LEFT — text content */}
@@ -251,7 +251,7 @@ export default function Hero() {
           </div>
 
           {/* Stats row */}
-          <div className="flex flex-wrap items-center gap-8 md:gap-12" style={{ marginTop: 56 }}>
+          <div className="flex flex-wrap items-center gap-6 md:gap-12" style={{ marginTop: 40 }}>
             {[
               { value: '3',    unit: 'Parameters', label: 'pH · TDS · Turbidity' },
               { value: '<5s',  unit: 'Latency',    label: 'Source to dashboard' },

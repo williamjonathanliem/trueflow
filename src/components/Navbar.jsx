@@ -170,6 +170,24 @@ export default function Navbar() {
                   </Link>
                 )
               })}
+              <Link
+                to="/dashboard"
+                style={{
+                  textDecoration: 'none',
+                  marginTop: 8,
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: '#ffffff',
+                  background: 'linear-gradient(135deg, #0369a1, #0ea5e9)',
+                  textAlign: 'center',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                Live Data
+              </Link>
             </div>
           </motion.div>
         )}

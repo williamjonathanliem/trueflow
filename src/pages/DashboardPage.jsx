@@ -256,7 +256,6 @@ export default function DashboardPage() {
           flexShrink: 0,
           background: '#051a2d',
           borderRight: '1px solid rgba(14,165,233,0.08)',
-          display: 'flex',
           flexDirection: 'column',
           padding: '20px 0',
           position: 'sticky',
@@ -353,7 +352,42 @@ export default function DashboardPage() {
         </aside>
 
         {/* Main content */}
-        <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+        <main style={{ flex: 1, padding: 'clamp(16px, 4vw, 24px)', overflowY: 'auto' }}>
+
+          {/* Mobile station selector — only visible below md */}
+          <div className="md:hidden mb-5">
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 8 }}>
+              Select Station
+            </div>
+            <select
+              value={activeStation.id}
+              onChange={e => setActiveStation(stations.find(s => s.id === e.target.value))}
+              style={{
+                width: '100%',
+                background: '#051a2d',
+                border: '1px solid rgba(14,165,233,0.2)',
+                borderRadius: 10,
+                color: '#ffffff',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 14,
+                padding: '12px 14px',
+                outline: 'none',
+                cursor: 'pointer',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+              }}
+            >
+              {stations.map(s => {
+                const dot = s.status === 'NOMINAL' ? '🟢' : s.status === 'WARNING' ? '🟡' : '🔴'
+                return (
+                  <option key={s.id} value={s.id} style={{ background: '#051a2d' }}>
+                    {dot} {s.name} — {s.status}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+
           {/* Top bar */}
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
             <div>
@@ -534,7 +568,6 @@ export default function DashboardPage() {
               border: '1px solid rgba(255,255,255,0.06)',
               borderRadius: 14,
               padding: 20,
-              gridColumn: '1 / span 2',
             }}
               className="md:col-span-2"
             >

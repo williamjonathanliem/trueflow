@@ -195,7 +195,7 @@ export default function ClosingCTA() {
             </div>
           </div>
 
-          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.08)' }} />
+          <div className="hidden sm:block" style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.08)' }} />
 
           {[
             { label: 'pH', desc: 'Continuous' },

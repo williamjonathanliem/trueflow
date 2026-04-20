@@ -355,10 +355,10 @@ export default function DemoPage() {
               Sensor Ingest Simulation
             </h1>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: 'rgba(180,220,255,0.35)', margin: '4px 0 0', lineHeight: 1.5 }}>
-              8 stations × 10 checks/hour = 80 inserts/hour in production (1 per station every 5 min)
-              {' '}· Demo accelerated — currently firing{' '}
+              <span className="hidden sm:inline">8 stations × 10 checks/hour = 80 inserts/hour in production · </span>
+              Demo accelerated · firing{' '}
               <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#7dd3fc' }}>{currentStation}</span>
-              {' '}· <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'rgba(14,165,233,0.6)' }}>{checkCount}</span> demo checks
+              {' '}·{' '}<span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'rgba(14,165,233,0.6)' }}>{checkCount}</span> checks
             </p>
           </div>
 
@@ -407,7 +407,8 @@ export default function DemoPage() {
       </div>
 
       {/* Three-panel layout */}
-      <div className="max-w-7xl mx-auto p-6" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', gap: 0, alignItems: 'start' }}>
+      <div className="max-w-7xl mx-auto px-4 py-6 lg:px-6">
+      <div className="flex flex-col lg:grid lg:gap-0 lg:items-start gap-6" style={{ gridTemplateColumns: '1fr auto 1fr auto 1fr' }}>
         {/* Terminal */}
         <div>
           <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 10 }}>
@@ -417,7 +418,7 @@ export default function DemoPage() {
         </div>
 
         {/* Arrow */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
+        <div className="hidden lg:flex" style={{ alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
           <motion.div
             animate={{ opacity: firing ? [0.3, 1, 0.3] : 0.2 }}
             transition={{ duration: 0.8, repeat: Infinity }}
@@ -436,7 +437,7 @@ export default function DemoPage() {
         </div>
 
         {/* Arrow */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
+        <div className="hidden lg:flex" style={{ alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
           <motion.div
             animate={{ opacity: activeStep >= 4 ? [0.3, 1, 0.3] : 0.2 }}
             transition={{ duration: 0.8, repeat: Infinity }}
@@ -454,9 +455,10 @@ export default function DemoPage() {
           <LiveCard reading={latestProc} firing={firing} />
         </div>
       </div>
+      </div>
 
       {/* Info footer */}
-      <div className="max-w-7xl mx-auto px-6 pb-8">
+      <div className="max-w-7xl mx-auto px-4 pb-8 lg:px-6">
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 20, display: 'flex', flexWrap: 'wrap', gap: 24 }}>
           {[
             { label: 'POST endpoint', value: 'supabase.from("sensor_readings").insert()' },
