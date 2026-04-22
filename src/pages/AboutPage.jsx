@@ -18,7 +18,7 @@ function FadeIn({ children, delay = 0, y = 20 }) {
 
 const pillars = [
   {
-    label: 'I MADE THIS CHANGE FOR TESTING',
+    label: 'I MADE THIS CHANGE FOR TESTING! EVELYN!',
     body: 'Water quality data should be open and readable by anyone — not locked behind lab reports or government dashboards.',
   },
   {
