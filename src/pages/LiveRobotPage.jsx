@@ -36,8 +36,8 @@ const LABEL = {
 
 function InputField({ label, value, onChange, unit, placeholder }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span style={{ ...LABEL, color: 'rgba(34,197,94,0.5)' }}>{label}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(34,197,94,0.55)' }}>{label}</span>
       <div style={{ position: 'relative' }}>
         <input
           type="number"
@@ -52,9 +52,9 @@ function InputField({ label, value, onChange, unit, placeholder }) {
             borderRadius: 8,
             color: '#fff',
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: 500,
-            padding: '8px 36px 8px 12px',
+            padding: '10px 40px 10px 14px',
             outline: 'none',
             transition: 'border-color 0.15s, background 0.15s',
             boxSizing: 'border-box',
@@ -68,14 +68,29 @@ function InputField({ label, value, onChange, unit, placeholder }) {
             e.target.style.background = 'rgba(255,255,255,0.04)'
           }}
         />
+        <style>{`
+          input::placeholder {
+            color: rgba(180,220,255,0.28) !important;
+            opacity: 1 !important;
+          }
+          input::-webkit-placeholder {
+            color: rgba(180,220,255,0.28) !important;
+            opacity: 1 !important;
+          }
+          input::-moz-placeholder {
+            color: rgba(180,220,255,0.28) !important;
+            opacity: 1 !important;
+          }
+        `}</style>
         <span style={{
           position: 'absolute',
-          right: 10,
+          right: 12,
           top: '50%',
           transform: 'translateY(-50%)',
           fontFamily: 'Inter, sans-serif',
-          fontSize: 10,
-          color: 'rgba(255,255,255,0.25)',
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.3)',
+          pointerEvents: 'none',
         }}>
           {unit}
         </span>
@@ -87,6 +102,20 @@ function InputField({ label, value, onChange, unit, placeholder }) {
 function BotCard({ station, index, inView, inputs, onInputChange, onSend, onClear, sendState }) {
   const cfg = statusConfig[station.status]
 
+  const robotIcon = (
+    <svg width="56" height="56" viewBox="0 0 44 44" fill="none" style={{ display: 'block' }}>
+      <circle cx="22" cy="22" r="14" stroke="rgba(34,197,94,0.6)" strokeWidth="1.5" />
+      <circle cx="22" cy="22" r="9" stroke="rgba(34,197,94,0.3)" strokeWidth="1" strokeDasharray="2 3" />
+      <rect x="20" y="4" width="4" height="6" rx="2" stroke="rgba(34,197,94,0.6)" strokeWidth="1.5" />
+      <circle cx="22" cy="3" r="2" stroke="rgba(34,197,94,0.6)" strokeWidth="1.5" />
+      <circle cx="12" cy="16" r="2" fill="rgba(34,197,94,0.7)" />
+      <circle cx="32" cy="16" r="2" fill="rgba(34,197,94,0.7)" />
+      <circle cx="12" cy="28" r="2" fill="rgba(34,197,94,0.7)" />
+      <circle cx="32" cy="28" r="2" fill="rgba(34,197,94,0.7)" />
+      <circle cx="22" cy="34" r="2" fill="rgba(34,197,94,0.7)" />
+    </svg>
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -96,221 +125,230 @@ function BotCard({ station, index, inView, inputs, onInputChange, onSend, onClea
         ...CARD,
         padding: 20,
         display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
+        flexDirection: 'row',
+        gap: 20,
+        alignItems: 'flex-start',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <div>
-          <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 10,
-            fontWeight: 500,
-            color: 'rgba(34,197,94,0.5)',
-            letterSpacing: '0.08em',
-            marginBottom: 4,
-          }}>
-            {station.id}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flexShrink: 0, paddingTop: 6 }}>
+        {robotIcon}
+        <motion.span
+          animate={{ opacity: [1, 0.4, 1] }}
+          transition={{ duration: 1.8, repeat: Infinity }}
+          style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.dot, display: 'inline-block', boxShadow: `0 0 5px ${cfg.dot}`, flexShrink: 0 }}
+        />
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11,
+              fontWeight: 500,
+              color: 'rgba(34,197,94,0.5)',
+              letterSpacing: '0.08em',
+              marginBottom: 2,
+            }}>
+              {station.id}
+            </div>
+            <h3 style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontWeight: 700,
+              fontSize: 15,
+              color: '#ffffff',
+              letterSpacing: '-0.01em',
+              lineHeight: 1.3,
+              margin: 0,
+            }}>
+              {station.name}
+            </h3>
           </div>
-          <h3 style={{
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontWeight: 700,
-            fontSize: 14,
-            color: '#ffffff',
-            letterSpacing: '-0.01em',
-            lineHeight: 1.3,
-            margin: 0,
-          }}>
-            {station.name}
-          </h3>
-        </div>
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '4px 10px',
-          borderRadius: 6,
-          background: cfg.bg,
-          border: `1px solid ${cfg.border}`,
-          flexShrink: 0,
-        }}>
-          <motion.span
-            animate={{ opacity: [1, 0.4, 1] }}
-            transition={{ duration: 1.8, repeat: Infinity }}
-            style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, display: 'inline-block', boxShadow: `0 0 5px ${cfg.dot}` }}
-          />
-          <span style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 10,
-            fontWeight: 700,
-            color: cfg.color,
-            letterSpacing: '0.06em',
-          }}>
-            {station.status}
-          </span>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <InputField
-          label="pH"
-          value={inputs.ph}
-          onChange={v => onInputChange('ph', v)}
-          unit="pH"
-          placeholder="7.0"
-        />
-        <InputField
-          label="TDS"
-          value={inputs.tds}
-          onChange={v => onInputChange('tds', v)}
-          unit="ppm"
-          placeholder="150"
-        />
-        <InputField
-          label="Turbidity"
-          value={inputs.turbidity}
-          onChange={v => onInputChange('turbidity', v)}
-          unit="NTU"
-          placeholder="0.5"
-        />
-        <InputField
-          label="Dissolved Oxygen"
-          value={inputs.do_mgl}
-          onChange={v => onInputChange('do_mgl', v)}
-          unit="mg/L"
-          placeholder="7.0"
-        />
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <button
-          onClick={onSend}
-          disabled={sendState === 'loading'}
-          style={{
-            padding: '10px 16px',
-            borderRadius: 8,
-            border: '1px solid rgba(34,197,94,0.3)',
-            background: sendState === 'loading' ? 'rgba(34,197,94,0.1)' : 'rgba(34,197,94,0.08)',
-            color: sendState === 'loading' ? 'rgba(34,197,94,0.5)' : '#22c55e',
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: sendState === 'loading' ? 'not-allowed' : 'pointer',
-            transition: 'all 0.15s',
-            letterSpacing: '0.02em',
-            display: 'flex',
+          <div style={{
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-          }}
-          onMouseEnter={e => {
-            if (sendState !== 'loading') {
-              e.currentTarget.style.background = 'rgba(34,197,94,0.15)'
-              e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'
-            }
-          }}
-          onMouseLeave={e => {
-            if (sendState !== 'loading') {
-              e.currentTarget.style.background = 'rgba(34,197,94,0.08)'
-              e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)'
-            }
-          }}
-        >
-          {sendState === 'loading' ? (
-            <>
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(34,197,94,0.3)', borderTopColor: '#22c55e', borderRadius: '50%' }}
-              />
-              Sending...
-            </>
-          ) : sendState === 'success' ? (
-            <>
-              <span>✓</span> Sent Successfully
-            </>
-          ) : sendState === 'error' ? (
-            <>
-              <span>✗</span> Failed — Retry
-            </>
-          ) : (
-            'Send Data'
+            gap: 5,
+            padding: '4px 10px',
+            borderRadius: 6,
+            background: cfg.bg,
+            border: `1px solid ${cfg.border}`,
+            flexShrink: 0,
+          }}>
+            <span style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 11,
+              fontWeight: 700,
+              color: cfg.color,
+              letterSpacing: '0.06em',
+            }}>
+              {station.status}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <InputField
+            label="pH"
+            value={inputs.ph}
+            onChange={v => onInputChange('ph', v)}
+            unit="pH"
+            placeholder="7.0"
+          />
+          <InputField
+            label="TDS"
+            value={inputs.tds}
+            onChange={v => onInputChange('tds', v)}
+            unit="ppm"
+            placeholder="150"
+          />
+          <InputField
+            label="Turbidity"
+            value={inputs.turbidity}
+            onChange={v => onInputChange('turbidity', v)}
+            unit="NTU"
+            placeholder="0.5"
+          />
+          <InputField
+            label="Dissolved O₂"
+            value={inputs.do_mgl}
+            onChange={v => onInputChange('do_mgl', v)}
+            unit="mg/L"
+            placeholder="7.0"
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={onSend}
+            disabled={sendState === 'loading'}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: 8,
+              border: '1px solid rgba(34,197,94,0.3)',
+              background: sendState === 'loading' ? 'rgba(34,197,94,0.1)' : 'rgba(34,197,94,0.08)',
+              color: sendState === 'loading' ? 'rgba(34,197,94,0.5)' : '#22c55e',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: sendState === 'loading' ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s',
+              letterSpacing: '0.02em',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+            onMouseEnter={e => {
+              if (sendState !== 'loading') {
+                e.currentTarget.style.background = 'rgba(34,197,94,0.15)'
+                e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'
+              }
+            }}
+            onMouseLeave={e => {
+              if (sendState !== 'loading') {
+                e.currentTarget.style.background = 'rgba(34,197,94,0.08)'
+                e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)'
+              }
+            }}
+          >
+            {sendState === 'loading' ? (
+              <>
+                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(34,197,94,0.3)', borderTopColor: '#22c55e', borderRadius: '50%' }}
+                />
+                Sending...
+              </>
+            ) : sendState === 'success' ? (
+              <>
+                <span>✓</span> Sent
+              </>
+            ) : sendState === 'error' ? (
+              <>
+                <span>✗</span> Retry
+              </>
+            ) : (
+              'Send Data'
+            )}
+          </button>
+
+          <button
+            onClick={onClear}
+            disabled={sendState === 'loading'}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.03)',
+              color: 'rgba(255,255,255,0.35)',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: sendState === 'loading' ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s',
+              letterSpacing: '0.01em',
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => {
+              if (sendState !== 'loading') {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
+              }
+            }}
+            onMouseLeave={e => {
+              if (sendState !== 'loading') {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
+              }
+            }}
+          >
+            Clear
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {sendState === 'success' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 6,
+                background: 'rgba(34,197,94,0.08)',
+                border: '1px solid rgba(34,197,94,0.2)',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 10,
+                color: '#22c55e',
+                textAlign: 'center',
+              }}
+            >
+              Data inserted successfully to Supabase.
+            </motion.div>
           )}
-        </button>
-
-        <button
-          onClick={onClear}
-          disabled={sendState === 'loading'}
-          style={{
-            padding: '7px 16px',
-            borderRadius: 8,
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.03)',
-            color: 'rgba(255,255,255,0.35)',
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: sendState === 'loading' ? 'not-allowed' : 'pointer',
-            transition: 'all 0.15s',
-            letterSpacing: '0.01em',
-          }}
-          onMouseEnter={e => {
-            if (sendState !== 'loading') {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-              e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
-            }
-          }}
-          onMouseLeave={e => {
-            if (sendState !== 'loading') {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-              e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
-            }
-          }}
-        >
-          Clear All Values
-        </button>
+          {sendState === 'error' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 6,
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.2)',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 10,
+                color: '#ef4444',
+                textAlign: 'center',
+              }}
+            >
+              Insert failed. Please try again.
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {sendState === 'success' && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 8,
-              background: 'rgba(34,197,94,0.08)',
-              border: '1px solid rgba(34,197,94,0.2)',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 11,
-              color: '#22c55e',
-              textAlign: 'center',
-            }}
-          >
-            Data inserted successfully to Supabase.
-          </motion.div>
-        )}
-        {sendState === 'error' && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 8,
-              background: 'rgba(239,68,68,0.08)',
-              border: '1px solid rgba(239,68,68,0.2)',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 11,
-              color: '#ef4444',
-              textAlign: 'center',
-            }}
-          >
-            Insert failed. Please try again.
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   )
 }
@@ -495,7 +533,7 @@ export default function LiveRobotPage() {
           )}
         </AnimatePresence>
 
-        <div ref={ref} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div ref={ref} className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {stations.map((s, i) => (
             <BotCard
               key={s.id}
