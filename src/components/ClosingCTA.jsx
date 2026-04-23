@@ -201,6 +201,7 @@ export default function ClosingCTA() {
             { label: 'pH', desc: 'Continuous' },
             { label: 'TDS', desc: 'Real-Time' },
             { label: 'Turbidity', desc: 'Verified' },
+            { label: 'DO', desc: 'O₂ Levels' },
           ].map((s, i) => (
             <div key={i} className="flex flex-col items-center gap-1">
               <span style={{

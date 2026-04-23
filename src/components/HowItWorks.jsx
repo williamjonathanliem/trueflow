@@ -23,7 +23,7 @@ const steps = [
       </svg>
     ),
     title: 'Sensors Activate',
-    desc: 'pH, TDS, and Turbidity are measured continuously — not quarterly, not self-reported.',
+    desc: 'pH, TDS, Turbidity, and Dissolved Oxygen (DO) are measured continuously — not quarterly, not self-reported.',
   },
   {
     number: '03',

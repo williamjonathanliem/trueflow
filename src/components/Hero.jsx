@@ -253,7 +253,7 @@ export default function Hero() {
           {/* Stats row */}
           <div className="flex flex-wrap items-center gap-6 md:gap-12" style={{ marginTop: 40 }}>
             {[
-              { value: '3',    unit: 'Parameters', label: 'pH · TDS · Turbidity' },
+              { value: '4',    unit: 'Parameters', label: 'pH · TDS · Turbidity · DO' },
               { value: '<5s',  unit: 'Latency',    label: 'Source to dashboard' },
               { value: '24/7', unit: 'Monitoring', label: 'Continuous uptime' },
             ].map((stat, i) => (
@@ -315,10 +315,16 @@ export default function Hero() {
             style={{ top: '12%', right: '2%' }}
           />
           <DataChip
-            label="Turbidity"
-            value="0.2 NTU"
-            color="#0ea5e9"
-            style={{ bottom: '22%', left: '0%' }}
+            label="TDS Level"
+            value="112 ppm"
+            color="#7dd3fc"
+            style={{ bottom: '28%', left: '0%' }}
+          />
+          <DataChip
+            label="Dissolved O₂"
+            value="7.2 mg/L"
+            color="#34d399"
+            style={{ bottom: '44%', right: '4%' }}
           />
           <DataChip
             label="Station KLR-04"

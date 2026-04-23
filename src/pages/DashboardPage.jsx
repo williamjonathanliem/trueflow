@@ -7,58 +7,6 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 
-// ─── Data generators ─────────────────────────────────────────────────────────
-
-function makePhData(n = 60) {
-  let v = 7.2
-  return Array.from({ length: n }, (_, i) => {
-    v += (Math.random() - 0.5) * 0.1
-    v = Math.max(6.7, Math.min(7.9, v))
-    return {
-      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
-      v: +v.toFixed(2),
-    }
-  })
-}
-function makeTdsData(n = 60) {
-  let v = 98
-  return Array.from({ length: n }, (_, i) => {
-    v += (Math.random() - 0.5) * 8
-    v = Math.max(60, Math.min(200, v))
-    return {
-      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
-      v: +v.toFixed(1),
-    }
-  })
-}
-function makeTurbData(n = 60) {
-  let v = 0.2
-  return Array.from({ length: n }, (_, i) => {
-    v += (Math.random() - 0.5) * 0.08
-    v = Math.max(0.01, Math.min(1.5, v))
-    return {
-      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
-      v: +v.toFixed(3),
-    }
-  })
-}
-function makeDoData(n = 60) {
-  let v = 8.4
-  return Array.from({ length: n }, (_, i) => {
-    v += (Math.random() - 0.5) * 0.2
-    v = Math.max(5.0, Math.min(12.0, v))
-    return {
-      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
-      v: +v.toFixed(2),
-    }
-  })
-}
-
-const phDataFull = makePhData()
-const tdsDataFull = makeTdsData()
-const turbDataFull = makeTurbData()
-const doDataFull = makeDoData()
-
 const stations = [
   { id: 'KLR-04', name: 'Klang R. — Stn 04', status: 'NOMINAL', score: 94 },
   { id: 'KLR-01', name: 'Klang R. — Stn 01', status: 'NOMINAL', score: 91 },
@@ -81,6 +29,13 @@ const alertsData = [
 ]
 
 const TIME_RANGES = ['1H', '6H', '24H', '7D']
+
+const RANGE_INTERVALS = {
+  '1H': '1 hour',
+  '6H': '6 hours',
+  '24H': '24 hours',
+  '7D': '7 days',
+}
 
 const CARD = {
   background: 'rgba(255,255,255,0.03)',
@@ -370,16 +325,31 @@ export default function DashboardPage() {
   const [activeStation, setActiveStation] = useState(stations[0])
   const [activeRange, setActiveRange] = useState('6H')
   const [liveReading, setLiveReading] = useState(null)
+  const [historicalData, setHistoricalData] = useState({ ph: [], tds: [], turbidity: [], do_mgl: [] })
   const [realtimeFlash, setRealtimeFlash] = useState(false)
 
   useEffect(() => {
-    setLiveReading(null)
-
     supabase
       .from('sensor_readings').select('*')
       .eq('station_id', activeStation.id)
       .order('created_at', { ascending: false }).limit(1)
       .then(({ data }) => { if (data?.length) setLiveReading(data[0]) })
+
+    supabase
+      .from('sensor_readings').select('*')
+      .eq('station_id', activeStation.id)
+      .gte('created_at', `now() - interval '${RANGE_INTERVALS[activeRange]}'`)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (data?.length) {
+          setHistoricalData({
+            ph: data.map(r => ({ t: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), v: r.ph })),
+            tds: data.map(r => ({ t: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), v: r.tds })),
+            turbidity: data.map(r => ({ t: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), v: r.turbidity })),
+            do_mgl: data.map(r => ({ t: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), v: r.do_mgl })),
+          })
+        }
+      })
 
     const channel = supabase.channel(`live-${activeStation.id}`)
       .on('postgres_changes', {
@@ -394,11 +364,12 @@ export default function DashboardPage() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [activeStation.id])
+  }, [activeStation.id, activeRange])
 
-  const ph = liveReading?.ph ?? (activeStation.score >= 90 ? '7.2' : activeStation.score >= 70 ? '7.0' : '6.3')
-  const tds = liveReading?.tds ?? (activeStation.score >= 90 ? 98 : activeStation.score >= 70 ? 164 : 342)
-  const turb = liveReading?.turbidity ?? (activeStation.score >= 90 ? '0.2' : activeStation.score >= 70 ? '0.9' : '3.8')
+  const ph = liveReading?.ph ?? '—'
+  const tds = liveReading?.tds ?? '—'
+  const turb = liveReading?.turbidity ?? '—'
+  const doVal = liveReading?.do_mgl ?? '—'
   const score = liveReading?.quality_score ?? activeStation.score
   const sc = STATUS_COLOR[activeStation.status]
   const metricStatus = activeStation.status === 'NOMINAL' ? 'SAFE' : activeStation.status
@@ -504,15 +475,15 @@ export default function DashboardPage() {
           <MetricCard label="pH Level" value={String(ph)} unit="pH" status={metricStatus} color={metricColor} sub="Normal range 6.5–8.5" />
           <MetricCard label="TDS" value={String(tds)} unit="ppm" status={metricStatus} color={metricColor} sub="Limit: 500 ppm (WHO)" />
           <MetricCard label="Turbidity" value={String(turb)} unit="NTU" status={metricStatus} color={metricColor} sub="Limit: 1 NTU (drinking)" />
-          <MetricCard label="DO" value="8.4" unit="mg/L" status={metricStatus} color={metricColor} sub="Min: 5 mg/L" />
+          <MetricCard label="DO" value={String(doVal)} unit="mg/L" status={metricStatus} color={metricColor} sub="Min: 5 mg/L" />
         </div>
 
         {/* Row 3: charts — 2x2 grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-          <ChartCard label="pH over time" value="7.20" unit="pH" status="SAFE" color="#00d4ff" data={phDataFull} chartUnit="pH" refValue={7.5} min={6.5} max={8.2} />
-          <ChartCard label="TDS over time" value="98" unit="ppm" status="SAFE" color="#7dd3fc" data={tdsDataFull} chartUnit="ppm" refValue={null} min={40} max={220} />
-          <ChartCard label="Turbidity" value="0.200" unit="NTU" status="SAFE" color="#06b6d4" data={turbDataFull} chartUnit="NTU" refValue={1.0} min={0} max={1.6} />
-          <ChartCard label="Dissolved Oxygen" value="8.40" unit="mg/L" status="SAFE" color="#34d399" data={doDataFull} chartUnit="mg/L" refValue={7.0} min={4.0} max={12.0} />
+          <ChartCard label="pH over time" value={String(ph)} unit="pH" status={metricStatus} color="#00d4ff" data={historicalData.ph} chartUnit="pH" refValue={7.5} min={6.5} max={8.2} />
+          <ChartCard label="TDS over time" value={String(tds)} unit="ppm" status={metricStatus} color="#7dd3fc" data={historicalData.tds} chartUnit="ppm" refValue={null} min={40} max={220} />
+          <ChartCard label="Turbidity" value={String(turb)} unit="NTU" status={metricStatus} color="#06b6d4" data={historicalData.turbidity} chartUnit="NTU" refValue={1.0} min={0} max={1.6} />
+          <ChartCard label="Dissolved Oxygen" value={String(doVal)} unit="mg/L" status={metricStatus} color="#34d399" data={historicalData.do_mgl} chartUnit="mg/L" refValue={7.0} min={4.0} max={12.0} />
         </div>
 
         {/* Row 3: alerts + compliance — 1 col mobile, 3 cols desktop (alerts span 2) */}

@@ -339,10 +339,11 @@ export default function Dashboard() {
             </div>
 
             {/* Metrics + gauge row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <MetricCard label="pH Level" value="7.2" unit="pH" status="SAFE" color="#22c55e" delay={0.3} />
               <MetricCard label="TDS" value="98" unit="ppm" status="SAFE" color="#22c55e" delay={0.4} />
               <MetricCard label="Turbidity" value="0.2" unit="NTU" status="SAFE" color="#22c55e" delay={0.5} />
+              <MetricCard label="DO" value="7.8" unit="mg/L" status="SAFE" color="#22c55e" delay={0.55} />
               <div style={{
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.08)',

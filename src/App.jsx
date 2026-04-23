@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import StationsPage from './pages/StationsPage'
 import DemoPage from './pages/DemoPage'
 import AboutPage from './pages/AboutPage'
+import LiveRobotPage from './pages/LiveRobotPage'
 import Footer from './components/Footer'
 
 function Preloader({ done }) {
@@ -70,7 +71,7 @@ function Preloader({ done }) {
 
 function AppInner({ preloaderDone }) {
   const location = useLocation()
-  const noFooter = ['/dashboard', '/demo'].includes(location.pathname)
+  const noFooter = ['/dashboard', '/demo', '/liverobot'].includes(location.pathname)
 
   return (
     <>
@@ -87,6 +88,7 @@ function AppInner({ preloaderDone }) {
           <Route path="/stations" element={<StationsPage />} />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/liverobot" element={<LiveRobotPage />} />
         </Routes>
         {!noFooter && <Footer />}
       </motion.div>
