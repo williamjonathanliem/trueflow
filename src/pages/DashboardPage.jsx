@@ -42,10 +42,22 @@ function makeTurbData(n = 60) {
     }
   })
 }
+function makeDoData(n = 60) {
+  let v = 8.4
+  return Array.from({ length: n }, (_, i) => {
+    v += (Math.random() - 0.5) * 0.2
+    v = Math.max(5.0, Math.min(12.0, v))
+    return {
+      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
+      v: +v.toFixed(2),
+    }
+  })
+}
 
 const phDataFull = makePhData()
 const tdsDataFull = makeTdsData()
 const turbDataFull = makeTurbData()
+const doDataFull = makeDoData()
 
 const stations = [
   { id: 'KLR-04', name: 'Klang R. — Stn 04', status: 'NOMINAL', score: 94 },
@@ -477,24 +489,30 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Row 1: gauge + metrics — 2 cols mobile, 4 cols desktop */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          <div className="col-span-2 md:col-span-1" style={{ ...CARD, padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        {/* Row 1: quality score — full width */}
+        <div className="grid grid-cols-1 gap-3 mb-3">
+          <div style={{ ...CARD, padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             <QualityGauge score={score} />
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(180,220,255,0.3)', textAlign: 'center', lineHeight: 1.5, margin: 0 }}>
               Cross-referenced against WHO &amp; Malaysian standards
             </p>
           </div>
+        </div>
+
+        {/* Row 2: pH, TDS, Turbidity, DO — 4 cols */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           <MetricCard label="pH Level" value={String(ph)} unit="pH" status={metricStatus} color={metricColor} sub="Normal range 6.5–8.5" />
           <MetricCard label="TDS" value={String(tds)} unit="ppm" status={metricStatus} color={metricColor} sub="Limit: 500 ppm (WHO)" />
           <MetricCard label="Turbidity" value={String(turb)} unit="NTU" status={metricStatus} color={metricColor} sub="Limit: 1 NTU (drinking)" />
+          <MetricCard label="DO" value="8.4" unit="mg/L" status={metricStatus} color={metricColor} sub="Min: 5 mg/L" />
         </div>
 
-        {/* Row 2: charts — 1 col mobile, 3 cols desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        {/* Row 3: charts — 2x2 grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           <ChartCard label="pH over time" value="7.20" unit="pH" status="SAFE" color="#00d4ff" data={phDataFull} chartUnit="pH" refValue={7.5} min={6.5} max={8.2} />
           <ChartCard label="TDS over time" value="98" unit="ppm" status="SAFE" color="#7dd3fc" data={tdsDataFull} chartUnit="ppm" refValue={null} min={40} max={220} />
           <ChartCard label="Turbidity" value="0.200" unit="NTU" status="SAFE" color="#06b6d4" data={turbDataFull} chartUnit="NTU" refValue={1.0} min={0} max={1.6} />
+          <ChartCard label="Dissolved Oxygen" value="8.40" unit="mg/L" status="SAFE" color="#34d399" data={doDataFull} chartUnit="mg/L" refValue={7.0} min={4.0} max={12.0} />
         </div>
 
         {/* Row 3: alerts + compliance — 1 col mobile, 3 cols desktop (alerts span 2) */}
