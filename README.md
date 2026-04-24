@@ -90,6 +90,7 @@ delete from sensor_readings;
 | `/stations` | All 8 monitoring stations with live status |
 | `/dashboard` | Deep-dive per-station with live charts and compliance |
 | `/demo` | Private pipeline simulator — fires raw sensor packets |
+| `/liverobot` | Manual data injection — fill in readings per bot and push to Supabase |
 | `/about` | Company identity and mission |
 
 ---
@@ -154,6 +155,22 @@ Weighted composite across 4 parameters:
 Status thresholds: **NOMINAL** ≥70 · **WARNING** 40–69 · **ALERT** <40
 
 Compliance references: WHO 2022, MS 1500:2019, DOE Class II
+
+---
+
+## Live Robot (`/liverobot`)
+
+The `/liverobot` page lets you manually inject sensor readings for any station without going through the automated demo cycle. Useful for testing specific edge cases — e.g. pushing a critically low pH to see how the dashboard and stations page react.
+
+**How it works:**
+- 8 bot cards, one per station
+- Each card has 4 input fields: pH, TDS, Turbidity, Dissolved O₂
+- All 4 fields must be filled before sending — partial submissions are blocked with a warning
+- On send, the row is inserted directly into `sensor_readings` with `device_id: {STATION_ID}-SIM` and `firmware: SIM-v1.0`
+- Success/error feedback appears inline on the card
+- All open `/stations` and `/dashboard` pages update via realtime
+
+**Note:** Footer is hidden on this page (same as `/dashboard` and `/demo`).
 
 ---
 
@@ -266,7 +283,7 @@ npm run preview  # preview production build locally
 
 - **No sensors yet** — the demo page simulates what real hardware would send. The calibration formulas and station profiles are based on real sensor specs (ESP32 + DFRobot probes).
 - **Supabase anon key is public** — this is intentional for a client-side app. RLS policies restrict writes to valid inserts only. Do not use the service role key client-side.
-- **Footer** — intentionally hidden on `/dashboard` and `/demo` (app-like pages). Shown on all others.
+- **Footer** — intentionally hidden on `/dashboard`, `/demo`, and `/liverobot` (app-like pages). Shown on all others.
 - **KLR-03** will almost always show WARNING or ALERT — its sensor profile is tuned to reflect a higher-contamination source. This is by design.
 - **Realtime** uses Supabase WebSocket channels. Each page subscribes on mount and unsubscribes on unmount. The dashboard re-subscribes when you switch stations and re-fetches history when the time range changes.
 - **DO columns** — if your DB was created before DO support was added, run the two `ALTER TABLE` statements in the Supabase Setup section above. Missing columns will cause inserts to fail silently.
