@@ -77,22 +77,22 @@ function JsonTerminal({ entries }) {
 
 // ── Processing Pipeline ────────────────────────────────────────────────────────
 const PIPELINE_STEPS = [
-  { id: 'rx',       label: 'Packet received',          detail: null },
-  { id: 'checksum', label: 'Checksum validated',        detail: null },
-  { id: 'calib',    label: 'Raw values calibrated',     detail: null },
-  { id: 'score',    label: 'Quality score computed',    detail: null },
-  { id: 'store',    label: 'Written to Supabase',       detail: null },
-  { id: 'rt',       label: 'Broadcast via Realtime',    detail: null },
+  { id: 'rx', label: 'Packet received', detail: null },
+  { id: 'checksum', label: 'Checksum validated', detail: null },
+  { id: 'calib', label: 'Raw values calibrated', detail: null },
+  { id: 'score', label: 'Quality score computed', detail: null },
+  { id: 'store', label: 'Written to Supabase', detail: null },
+  { id: 'rt', label: 'Broadcast via Realtime', detail: null },
 ]
 
 function Pipeline({ activeStep, processed, raw }) {
   const stepDetails = processed ? {
-    rx:       `device_id: ${raw?.device_id}`,
+    rx: `device_id: ${raw?.device_id}`,
     checksum: `${raw?.checksum} ✓`,
-    calib:    `${raw?.raw?.ph_mv}mV → ${processed?.ph} pH`,
-    score:    `${processed?.quality_score}/100 — ${processed?.status}`,
-    store:    `sensor_readings (KLR-04)`,
-    rt:       `channel: sensor-readings`,
+    calib: `${raw?.raw?.ph_mv}mV → ${processed?.ph} pH`,
+    score: `${processed?.quality_score}/100 — ${processed?.status}`,
+    store: `sensor_readings (KLR-04)`,
+    rt: `channel: sensor-readings`,
   } : {}
 
   return (
@@ -174,19 +174,27 @@ function Pipeline({ activeStep, processed, raw }) {
 // ── Live Output Card ───────────────────────────────────────────────────────────
 function LiveCard({ reading, firing }) {
   const statusColor = reading?.status === 'NOMINAL' ? '#22c55e' : reading?.status === 'WARNING' ? '#f59e0b' : '#ef4444'
+  const isAlert   = reading?.status === 'ALERT'
+  const isWarning = reading?.status === 'WARNING'
 
   return (
-    <div style={{
-      background: '#0a0f1a',
-      borderRadius: 12,
-      border: '1px solid rgba(14,165,233,0.12)',
-      overflow: 'hidden',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
+    <motion.div
+      key={reading?.status}
+      animate={isAlert ? { boxShadow: ['0 0 0px rgba(239,68,68,0)', '0 0 24px rgba(239,68,68,0.25)', '0 0 0px rgba(239,68,68,0)'] } : {}}
+      transition={{ duration: 1.6, repeat: isAlert ? Infinity : 0 }}
+      style={{
+        background: isAlert ? '#130808' : isWarning ? '#100d04' : '#0a0f1a',
+        borderRadius: 12,
+        border: isAlert ? '1px solid rgba(239,68,68,0.4)' : isWarning ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(14,165,233,0.12)',
+        overflow: 'hidden',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'background 0.4s, border-color 0.4s',
+      }}
+    >
       {/* Card header */}
-      <div style={{ padding: '10px 16px', background: 'rgba(14,165,233,0.05)', borderBottom: '1px solid rgba(14,165,233,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ padding: '10px 16px', background: isAlert ? 'rgba(239,68,68,0.06)' : isWarning ? 'rgba(245,158,11,0.05)' : 'rgba(14,165,233,0.05)', borderBottom: `1px solid ${isAlert ? 'rgba(239,68,68,0.15)' : isWarning ? 'rgba(245,158,11,0.12)' : 'rgba(14,165,233,0.1)'}`, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.45)' }}>
           Live Output — {reading?.station_id ?? '—'}
         </span>
@@ -202,6 +210,31 @@ function LiveCard({ reading, firing }) {
         )}
       </div>
 
+      {/* Alert / Warning banner */}
+      {reading && (isAlert || isWarning) && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          style={{
+            padding: '7px 16px',
+            background: isAlert ? 'rgba(239,68,68,0.07)' : 'rgba(245,158,11,0.06)',
+            borderBottom: `1px solid ${statusColor}20`,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          <motion.div
+            animate={{ opacity: [1, 0.2, 1] }}
+            transition={{ duration: 0.9, repeat: Infinity }}
+            style={{ width: 6, height: 6, borderRadius: '50%', background: statusColor, flexShrink: 0 }}
+          />
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, color: statusColor, letterSpacing: '0.04em' }}>
+            {isAlert
+              ? 'CRITICAL — Water quality below safe threshold'
+              : 'ELEVATED — Parameters approaching limits'}
+          </span>
+        </motion.div>
+      )}
+
       <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {!reading ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', items: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 0' }}>
@@ -216,6 +249,7 @@ function LiveCard({ reading, firing }) {
               { label: 'pH', value: reading.ph, unit: 'pH', color: '#0ea5e9' },
               { label: 'TDS', value: reading.tds, unit: 'ppm', color: '#7dd3fc' },
               { label: 'Turbidity', value: reading.turbidity, unit: 'NTU', color: '#06b6d4' },
+              { label: 'DO', value: reading.do_mgl, unit: 'mg/L', color: '#34d399' },
             ].map(m => (
               <motion.div
                 key={m.label}
@@ -248,8 +282,8 @@ function LiveCard({ reading, firing }) {
               <div className="grid grid-cols-2 gap-y-2">
                 {[
                   { k: 'firmware', v: reading.firmware },
-                  { k: 'battery',  v: `${reading.battery_pct}%` },
-                  { k: 'signal',   v: `${reading.signal_rssi} dBm` },
+                  { k: 'battery', v: `${reading.battery_pct}%` },
+                  { k: 'signal', v: `${reading.signal_rssi} dBm` },
                   { k: 'checksum', v: reading.checksum },
                 ].map(r => (
                   <div key={r.k}>
@@ -262,29 +296,29 @@ function LiveCard({ reading, firing }) {
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
 // ── Simulation config ──────────────────────────────────────────────────────────
 // Production: 10 checks/hour, 1 per station per ~5–6 min cycle
 // Demo: compressed to 6s per station so all 8 cycle in ~48s
-const ALL_STATIONS = ['KLR-04','KLR-01','KLR-02','KLR-03','GOM-01','GOM-02','PND-01','PEL-01']
+const ALL_STATIONS = ['KLR-04', 'KLR-01', 'KLR-02', 'KLR-03', 'GOM-01', 'GOM-02', 'PND-01', 'PEL-01']
 const DEMO_INTERVAL_MS = 6000   // 6s between stations in demo (5 min in production)
 const CHECKS_PER_CYCLE = 10     // 10 checks per hour in production
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function DemoPage() {
-  const [entries, setEntries]           = useState([])
-  const [activeStep, setActiveStep]     = useState(-1)
-  const [latestRaw, setLatestRaw]       = useState(null)
-  const [latestProc, setLatestProc]     = useState(null)
-  const [firing, setFiring]             = useState(false)
-  const [autoFire, setAutoFire]         = useState(true)
-  const [dbStatus, setDbStatus]         = useState('idle')
+  const [entries, setEntries] = useState([])
+  const [activeStep, setActiveStep] = useState(-1)
+  const [latestRaw, setLatestRaw] = useState(null)
+  const [latestProc, setLatestProc] = useState(null)
+  const [firing, setFiring] = useState(false)
+  const [autoFire, setAutoFire] = useState(true)
+  const [dbStatus, setDbStatus] = useState('idle')
   const [currentStation, setCurrentStation] = useState(ALL_STATIONS[0])
-  const [checkCount, setCheckCount]     = useState(0)
-  const autoRef  = useRef(null)
+  const [checkCount, setCheckCount] = useState(0)
+  const autoRef = useRef(null)
   const stationIndexRef = useRef(0)
   const firingRef = useRef(false)
 
@@ -297,26 +331,26 @@ export default function DemoPage() {
 
     const raw = generateRawPacket(stationId)
     const now = new Date()
-    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
 
     setEntries(prev => [...prev.slice(-6), { time: timeStr, packet: raw, station: stationId }])
     setLatestRaw(raw)
 
-    await delay(500);  setActiveStep(1)
-    await delay(480);  setActiveStep(2)
+    await delay(500); setActiveStep(1)
+    await delay(480); setActiveStep(2)
 
     const processed = processPacket(raw, stationId)
     setLatestProc(processed)
 
-    await delay(520);  setActiveStep(3)
-    await delay(420);  setActiveStep(4)
+    await delay(520); setActiveStep(3)
+    await delay(420); setActiveStep(4)
 
     const { error } = await supabase.from('sensor_readings').insert([processed])
     if (error) { console.warn('Supabase:', error.message); setDbStatus('error') }
     else { setDbStatus('ok') }
 
-    await delay(380);  setActiveStep(5)
-    await delay(500);  setActiveStep(PIPELINE_STEPS.length)
+    await delay(380); setActiveStep(5)
+    await delay(500); setActiveStep(PIPELINE_STEPS.length)
 
     setCheckCount(c => c + 1)
     firingRef.current = false
@@ -408,53 +442,53 @@ export default function DemoPage() {
 
       {/* Three-panel layout */}
       <div className="max-w-7xl mx-auto px-4 py-6 lg:px-6">
-      <div className="flex flex-col lg:grid lg:gap-0 lg:items-start gap-6" style={{ gridTemplateColumns: '1fr auto 1fr auto 1fr' }}>
-        {/* Terminal */}
-        <div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 10 }}>
-            01 · Raw Ingest
+        <div className="flex flex-col lg:grid lg:gap-0 lg:items-start gap-6" style={{ gridTemplateColumns: '1fr auto 1fr auto 1fr' }}>
+          {/* Terminal */}
+          <div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 10 }}>
+              01 · Raw Ingest
+            </div>
+            <JsonTerminal entries={entries} />
           </div>
-          <JsonTerminal entries={entries} />
-        </div>
 
-        {/* Arrow */}
-        <div className="hidden lg:flex" style={{ alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
-          <motion.div
-            animate={{ opacity: firing ? [0.3, 1, 0.3] : 0.2 }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: '#0ea5e9' }}
-          >
-            →
-          </motion.div>
-        </div>
-
-        {/* Pipeline */}
-        <div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 10 }}>
-            02 · Processing
+          {/* Arrow */}
+          <div className="hidden lg:flex" style={{ alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
+            <motion.div
+              animate={{ opacity: firing ? [0.3, 1, 0.3] : 0.2 }}
+              transition={{ duration: 0.8, repeat: Infinity }}
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: '#0ea5e9' }}
+            >
+              →
+            </motion.div>
           </div>
-          <Pipeline activeStep={activeStep} processed={latestProc} raw={latestRaw} />
-        </div>
 
-        {/* Arrow */}
-        <div className="hidden lg:flex" style={{ alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
-          <motion.div
-            animate={{ opacity: activeStep >= 4 ? [0.3, 1, 0.3] : 0.2 }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: '#0ea5e9' }}
-          >
-            →
-          </motion.div>
-        </div>
-
-        {/* Live output */}
-        <div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 10 }}>
-            03 · Live Output
+          {/* Pipeline */}
+          <div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 10 }}>
+              02 · Processing
+            </div>
+            <Pipeline activeStep={activeStep} processed={latestProc} raw={latestRaw} />
           </div>
-          <LiveCard reading={latestProc} firing={firing} />
+
+          {/* Arrow */}
+          <div className="hidden lg:flex" style={{ alignItems: 'center', padding: '0 16px', paddingTop: 28 }}>
+            <motion.div
+              animate={{ opacity: activeStep >= 4 ? [0.3, 1, 0.3] : 0.2 }}
+              transition={{ duration: 0.8, repeat: Infinity }}
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: '#0ea5e9' }}
+            >
+              →
+            </motion.div>
+          </div>
+
+          {/* Live output */}
+          <div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(14,165,233,0.4)', marginBottom: 10 }}>
+              03 · Live Output
+            </div>
+            <LiveCard reading={latestProc} firing={firing} />
+          </div>
         </div>
-      </div>
       </div>
 
       {/* Info footer */}

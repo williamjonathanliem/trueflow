@@ -1,13 +1,33 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import heroImg from '../assets/hero.png'
+import { supabase } from '../lib/supabase'
 
 const gradientText = {
   background: 'linear-gradient(135deg, #0369a1 0%, #7dd3fc 100%)',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
   backgroundClip: 'text',
+}
+
+function getWaterStatus(reading) {
+  if (!reading) return { color: '#f87171', label: 'No Data', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.22)', dot: '#fca5a5', shadow: 'rgba(252,165,165,0.8)' }
+
+  const { ph, tds, turbidity, do_mgl } = reading
+
+  const phOk = ph >= 6.5 && ph <= 8.5
+  const tdsOk = tds <= 500
+  const turbidityOk = turbidity <= 1
+  const doOk = do_mgl >= 5
+
+  const allOk = phOk && tdsOk && turbidityOk && doOk
+
+  if (allOk) {
+    return { color: '#86efac', label: 'Nominal', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.22)', dot: '#86efac', shadow: 'rgba(134,239,172,0.8)' }
+  } else {
+    return { color: '#facc15', label: 'Warning', bg: 'rgba(250,204,21,0.08)', border: 'rgba(250,204,21,0.22)', dot: '#fde047', shadow: 'rgba(253,224,71,0.8)' }
+  }
 }
 
 function WaterCanvas() {
@@ -135,9 +155,20 @@ function DataChip({ label, value, color, style }) {
 
 export default function Hero() {
   const ref = useRef(null)
+  const [liveReading, setLiveReading] = useState(null)
+  const [status, setStatus] = useState({ color: '#86efac', label: 'Nominal', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.22)', dot: '#86efac', shadow: 'rgba(134,239,172,0.8)' })
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
   const opacity = useTransform(scrollYProgress, [0, 0.55], [1, 0])
   const y = useTransform(scrollYProgress, [0, 1], ['0%', '20%'])
+
+  useEffect(() => {
+    supabase.from('sensor_readings').select('*').order('created_at', { ascending: false }).limit(1).then(({ data }) => {
+      if (data?.length) {
+        setLiveReading(data[0])
+        setStatus(getWaterStatus(data[0]))
+      }
+    })
+  }, [])
 
   return (
     <section
@@ -154,7 +185,6 @@ export default function Hero() {
 
       {/* Split layout */}
       <motion.div
-        style={{ opacity }}
         className="relative z-10 min-h-screen grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-7xl mx-auto px-4 sm:px-6"
         style={{ opacity, paddingTop: 80, paddingBottom: 40 }}
       >
@@ -168,11 +198,11 @@ export default function Hero() {
           {/* Live badge */}
           <div
             className="mb-7 inline-flex items-center gap-2 px-4 py-2 rounded-full"
-            style={{ background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.22)' }}
+            style={{ background: status.bg, border: `1px solid ${status.border}` }}
           >
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#7dd3fc', boxShadow: '0 0 8px rgba(125,211,252,0.8)' }} />
-            <span style={{ color: '#7dd3fc', fontSize: 11, fontFamily: "'Syne', sans-serif", fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              Live · Malaysia Water Intelligence
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: status.dot, boxShadow: `0 0 8px ${status.shadow}` }} />
+            <span style={{ color: status.color, fontSize: 11, fontFamily: "'Syne', sans-serif", fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Live · {status.label} · Malaysia Water Intelligence
             </span>
           </div>
 
@@ -253,8 +283,8 @@ export default function Hero() {
           {/* Stats row */}
           <div className="flex flex-wrap items-center gap-6 md:gap-12" style={{ marginTop: 40 }}>
             {[
-              { value: '3',    unit: 'Parameters', label: 'pH · TDS · Turbidity' },
-              { value: '<5s',  unit: 'Latency',    label: 'Source to dashboard' },
+              { value: '4', unit: 'Parameters', label: 'pH · TDS · Turbidity · DO' },
+              { value: '<5s', unit: 'Latency', label: 'Source to dashboard' },
               { value: '24/7', unit: 'Monitoring', label: 'Continuous uptime' },
             ].map((stat, i) => (
               <div key={i} className="flex flex-col gap-1">
@@ -310,19 +340,31 @@ export default function Hero() {
           {/* Floating data chips */}
           <DataChip
             label="pH Level"
-            value="7.21 pH"
+            value={liveReading ? `${liveReading.ph} pH` : '-- pH'}
             color="#22c55e"
             style={{ top: '12%', right: '2%' }}
           />
           <DataChip
-            label="Turbidity"
-            value="0.2 NTU"
-            color="#0ea5e9"
-            style={{ bottom: '22%', left: '0%' }}
+            label="TDS Level"
+            value={liveReading ? `${liveReading.tds} ppm` : '-- ppm'}
+            color="#7dd3fc"
+            style={{ bottom: '28%', left: '0%' }}
           />
           <DataChip
-            label="Station KLR-04"
-            value="NOMINAL"
+            label="Turbidity"
+            value={liveReading ? `${liveReading.turbidity} NTU` : '-- NTU'}
+            color="#a78bfa"
+            style={{ top: '18%', left: '4%' }}
+          />
+          <DataChip
+            label="Dissolved O₂"
+            value={liveReading ? `${liveReading.do_mgl} mg/L` : '-- mg/L'}
+            color="#34d399"
+            style={{ bottom: '44%', right: '4%' }}
+          />
+          <DataChip
+            label="Station"
+            value={liveReading?.station_id || 'KLR-04'}
             color="#22c55e"
             style={{ bottom: '8%', right: '8%' }}
           />

@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 
 const nav = [
   { to: '/', label: 'Home' },
+  { to: '/about', label: 'About' },
   { to: '/stations', label: 'Stations' },
   { to: '/dashboard', label: 'Dashboard' },
-  { to: '/about', label: 'About' },
 ]
 
 export default function Footer() {

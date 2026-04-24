@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 const links = [
   { to: '/', label: 'Home' },
+  { to: '/about', label: 'About' },
   { to: '/stations', label: 'Stations' },
   { to: '/dashboard', label: 'Dashboard' },
-  { to: '/about', label: 'About' },
 ]
 
 export default function Navbar() {
@@ -89,10 +89,10 @@ export default function Navbar() {
             )
           })}
           <Link
-            to="/dashboard"
+            to="/liverobot"
             style={{
               textDecoration: 'none',
-              marginLeft: 8,
+              marginLeft: 10,
               padding: '7px 18px',
               borderRadius: 8,
               fontFamily: 'Inter, sans-serif',
@@ -104,7 +104,7 @@ export default function Navbar() {
               letterSpacing: '0.01em',
             }}
           >
-            Live Data
+            Simulation
           </Link>
         </nav>
 
@@ -171,7 +171,7 @@ export default function Navbar() {
                 )
               })}
               <Link
-                to="/dashboard"
+                to="/liverobot"
                 style={{
                   textDecoration: 'none',
                   marginTop: 8,
@@ -186,7 +186,7 @@ export default function Navbar() {
                   letterSpacing: '0.01em',
                 }}
               >
-                Live Data
+                Simulation
               </Link>
             </div>
           </motion.div>

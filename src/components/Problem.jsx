@@ -46,8 +46,8 @@ const problems = [
       </svg>
     ),
     title: 'Contamination goes undetected.',
-    stat: 'Days',
-    statLabel: 'before incidents are reported',
+    stat: '∞',
+    statLabel: 'days before incidents are reported',
     body: 'Pollution events in shared water sources can go unreported for days or weeks. By the time action is taken, the damage is already done.',
   },
 ]

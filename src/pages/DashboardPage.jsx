@@ -7,46 +7,6 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 
-// ─── Data generators ─────────────────────────────────────────────────────────
-
-function makePhData(n = 60) {
-  let v = 7.2
-  return Array.from({ length: n }, (_, i) => {
-    v += (Math.random() - 0.5) * 0.1
-    v = Math.max(6.7, Math.min(7.9, v))
-    return {
-      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
-      v: +v.toFixed(2),
-    }
-  })
-}
-function makeTdsData(n = 60) {
-  let v = 98
-  return Array.from({ length: n }, (_, i) => {
-    v += (Math.random() - 0.5) * 8
-    v = Math.max(60, Math.min(200, v))
-    return {
-      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
-      v: +v.toFixed(1),
-    }
-  })
-}
-function makeTurbData(n = 60) {
-  let v = 0.2
-  return Array.from({ length: n }, (_, i) => {
-    v += (Math.random() - 0.5) * 0.08
-    v = Math.max(0.01, Math.min(1.5, v))
-    return {
-      t: `${String(9 + Math.floor(i / 6)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}`,
-      v: +v.toFixed(3),
-    }
-  })
-}
-
-const phDataFull = makePhData()
-const tdsDataFull = makeTdsData()
-const turbDataFull = makeTurbData()
-
 const stations = [
   { id: 'KLR-04', name: 'Klang R. — Stn 04', status: 'NOMINAL', score: 94 },
   { id: 'KLR-01', name: 'Klang R. — Stn 01', status: 'NOMINAL', score: 91 },
@@ -69,6 +29,13 @@ const alertsData = [
 ]
 
 const TIME_RANGES = ['1H', '6H', '24H', '7D']
+
+const RANGE_MS = {
+  '1H':  1  * 60 * 60 * 1000,
+  '6H':  6  * 60 * 60 * 1000,
+  '24H': 24 * 60 * 60 * 1000,
+  '7D':  7  * 24 * 60 * 60 * 1000,
+}
 
 const CARD = {
   background: 'rgba(255,255,255,0.03)',
@@ -116,26 +83,19 @@ function ChartTooltip({ active, payload, label, unit }) {
 // ─── Live area chart ──────────────────────────────────────────────────────────
 
 function LiveArea({ data, color, unit, refValue, min, max }) {
-  const [visible, setVisible] = useState([data[0]])
-  const started = useRef(false)
-
-  useEffect(() => {
-    if (started.current) return
-    started.current = true
-    let i = 1
-    const iv = setInterval(() => {
-      if (i >= data.length) { clearInterval(iv); return }
-      setVisible(data.slice(0, i + 1))
-      i++
-    }, 40)
-    return () => clearInterval(iv)
-  }, [data])
-
   const gradId = `ag-${color.replace('#', '')}`
+
+  if (!data?.length) return (
+    <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'rgba(255,255,255,0.12)', letterSpacing: '0.04em' }}>
+        awaiting data…
+      </span>
+    </div>
+  )
 
   return (
     <ResponsiveContainer width="100%" height={120}>
-      <AreaChart data={visible} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.18} />
@@ -358,10 +318,18 @@ export default function DashboardPage() {
   const [activeStation, setActiveStation] = useState(stations[0])
   const [activeRange, setActiveRange] = useState('6H')
   const [liveReading, setLiveReading] = useState(null)
+  const [historicalData, setHistoricalData] = useState({ ph: [], tds: [], turbidity: [], do_mgl: [] })
   const [realtimeFlash, setRealtimeFlash] = useState(false)
 
   useEffect(() => {
+    // Reset on station / range switch
     setLiveReading(null)
+    setHistoricalData({ ph: [], tds: [], turbidity: [], do_mgl: [] })
+
+    const toPoint = (r, key) => ({
+      t: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      v: r[key],
+    })
 
     supabase
       .from('sensor_readings').select('*')
@@ -369,27 +337,56 @@ export default function DashboardPage() {
       .order('created_at', { ascending: false }).limit(1)
       .then(({ data }) => { if (data?.length) setLiveReading(data[0]) })
 
+    const cutoff = new Date(Date.now() - RANGE_MS[activeRange]).toISOString()
+    supabase
+      .from('sensor_readings').select('*')
+      .eq('station_id', activeStation.id)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (data?.length) {
+          setHistoricalData({
+            ph:        data.map(r => toPoint(r, 'ph')),
+            tds:       data.map(r => toPoint(r, 'tds')),
+            turbidity: data.map(r => toPoint(r, 'turbidity')),
+            do_mgl:    data.map(r => toPoint(r, 'do_mgl')),
+          })
+        }
+      })
+
     const channel = supabase.channel(`live-${activeStation.id}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public',
         table: 'sensor_readings',
         filter: `station_id=eq.${activeStation.id}`,
       }, (payload) => {
-        setLiveReading(payload.new)
+        const row = payload.new
+        const t = new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        setLiveReading(row)
         setRealtimeFlash(true)
         setTimeout(() => setRealtimeFlash(false), 800)
+        // Append new point to every chart series
+        setHistoricalData(prev => ({
+          ph:        [...prev.ph.slice(-120),        { t, v: row.ph }],
+          tds:       [...prev.tds.slice(-120),       { t, v: row.tds }],
+          turbidity: [...prev.turbidity.slice(-120), { t, v: row.turbidity }],
+          do_mgl:    [...prev.do_mgl.slice(-120),    { t, v: row.do_mgl }],
+        }))
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [activeStation.id])
+  }, [activeStation.id, activeRange])
 
-  const ph = liveReading?.ph ?? (activeStation.score >= 90 ? '7.2' : activeStation.score >= 70 ? '7.0' : '6.3')
-  const tds = liveReading?.tds ?? (activeStation.score >= 90 ? 98 : activeStation.score >= 70 ? 164 : 342)
-  const turb = liveReading?.turbidity ?? (activeStation.score >= 90 ? '0.2' : activeStation.score >= 70 ? '0.9' : '3.8')
+  const ph = liveReading?.ph ?? '—'
+  const tds = liveReading?.tds ?? '—'
+  const turb = liveReading?.turbidity ?? '—'
+  const doVal = liveReading?.do_mgl ?? '—'
   const score = liveReading?.quality_score ?? activeStation.score
-  const sc = STATUS_COLOR[activeStation.status]
-  const metricStatus = activeStation.status === 'NOMINAL' ? 'SAFE' : activeStation.status
+  // Use live reading status when available — static station array is just a fallback
+  const currentStatus = liveReading?.status ?? activeStation.status
+  const sc = STATUS_COLOR[currentStatus]
+  const metricStatus = currentStatus === 'NOMINAL' ? 'SAFE' : currentStatus
   const metricColor = sc
 
   return (
@@ -437,7 +434,7 @@ export default function DashboardPage() {
             >
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: sc, boxShadow: `0 0 7px ${sc}` }} />
               <span style={{ color: sc, fontSize: 11, fontWeight: 600, fontFamily: 'Inter, sans-serif', letterSpacing: '0.06em' }}>
-                {activeStation.status === 'NOMINAL' ? 'ALL SYSTEMS NOMINAL' : activeStation.status}
+                {currentStatus === 'NOMINAL' ? 'ALL SYSTEMS NOMINAL' : currentStatus}
               </span>
             </motion.div>
 
@@ -477,24 +474,26 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Row 1: gauge + metrics — 2 cols mobile, 4 cols desktop */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          <div className="col-span-2 md:col-span-1" style={{ ...CARD, padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        {/* Row 1: gauge + 4 sensor metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+          <div className="col-span-2 md:col-span-1" style={{ ...CARD, padding: '14px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <QualityGauge score={score} />
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: 'rgba(180,220,255,0.3)', textAlign: 'center', lineHeight: 1.5, margin: 0 }}>
-              Cross-referenced against WHO &amp; Malaysian standards
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 9, color: 'rgba(180,220,255,0.25)', textAlign: 'center', lineHeight: 1.4, margin: 0, letterSpacing: '0.02em' }}>
+              WHO &amp; Malaysian standards
             </p>
           </div>
-          <MetricCard label="pH Level" value={String(ph)} unit="pH" status={metricStatus} color={metricColor} sub="Normal range 6.5–8.5" />
-          <MetricCard label="TDS" value={String(tds)} unit="ppm" status={metricStatus} color={metricColor} sub="Limit: 500 ppm (WHO)" />
-          <MetricCard label="Turbidity" value={String(turb)} unit="NTU" status={metricStatus} color={metricColor} sub="Limit: 1 NTU (drinking)" />
+          <MetricCard label="pH Level" value={String(ph)} unit="pH" status={metricStatus} color={metricColor} sub="6.5–8.5 safe range" />
+          <MetricCard label="TDS" value={String(tds)} unit="ppm" status={metricStatus} color={metricColor} sub="< 500 ppm (WHO)" />
+          <MetricCard label="Turbidity" value={String(turb)} unit="NTU" status={metricStatus} color={metricColor} sub="< 1 NTU (drinking)" />
+          <MetricCard label="DO" value={String(doVal)} unit="mg/L" status={metricStatus} color={metricColor} sub="> 5 mg/L min" />
         </div>
 
-        {/* Row 2: charts — 1 col mobile, 3 cols desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-          <ChartCard label="pH over time" value="7.20" unit="pH" status="SAFE" color="#00d4ff" data={phDataFull} chartUnit="pH" refValue={7.5} min={6.5} max={8.2} />
-          <ChartCard label="TDS over time" value="98" unit="ppm" status="SAFE" color="#7dd3fc" data={tdsDataFull} chartUnit="ppm" refValue={null} min={40} max={220} />
-          <ChartCard label="Turbidity" value="0.200" unit="NTU" status="SAFE" color="#06b6d4" data={turbDataFull} chartUnit="NTU" refValue={1.0} min={0} max={1.6} />
+        {/* Row 3: charts — 2x2 grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <ChartCard label="pH over time" value={String(ph)} unit="pH" status={metricStatus} color="#00d4ff" data={historicalData.ph} chartUnit="pH" refValue={7.5} min={6.5} max={8.2} />
+          <ChartCard label="TDS over time" value={String(tds)} unit="ppm" status={metricStatus} color="#7dd3fc" data={historicalData.tds} chartUnit="ppm" refValue={null} min={40} max={220} />
+          <ChartCard label="Turbidity" value={String(turb)} unit="NTU" status={metricStatus} color="#06b6d4" data={historicalData.turbidity} chartUnit="NTU" refValue={1.0} min={0} max={1.6} />
+          <ChartCard label="Dissolved Oxygen" value={String(doVal)} unit="mg/L" status={metricStatus} color="#34d399" data={historicalData.do_mgl} chartUnit="mg/L" refValue={7.0} min={4.0} max={12.0} />
         </div>
 
         {/* Row 3: alerts + compliance — 1 col mobile, 3 cols desktop (alerts span 2) */}

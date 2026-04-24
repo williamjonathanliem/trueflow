@@ -1,0 +1,14 @@
+## Summary
+
+- Changed static "Live · Malaysia Water Intelligence" indicator to dynamically fetch from sensor_readings table
+- Added color logic based on water quality thresholds:
+  - Green (Nominal): pH 6.5-8.5, TDS <=500, Turbidity <=1, DO >=5 mg/L
+  - Yellow (Warning): Any parameter out of range
+  - Red (No Data): No readings available
+- Added Turbidity data chip in floating chips (previously showed pH, TDS, DO only)
+- Updated floating data chips to display live sensor data instead of hardcoded values
+- Added station ID display to show which station the reading comes from
+
+## Files Changed
+
+- src/components/Hero.jsx: Added Supabase fetch, status logic, dynamic indicator colors, and turbidity chip

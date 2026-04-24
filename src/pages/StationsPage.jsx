@@ -12,6 +12,7 @@ const stations = [
     ph: 7.1,
     tds: 112,
     turbidity: 0.3,
+    do_mgl: 7.2,
     score: 91,
     lastUpdated: '2 min ago',
     coords: { lat: '3.1319° N', lng: '101.6841° E' },
@@ -24,6 +25,7 @@ const stations = [
     ph: 6.8,
     tds: 198,
     turbidity: 1.4,
+    do_mgl: 5.8,
     score: 68,
     lastUpdated: '1 min ago',
     coords: { lat: '3.0838° N', lng: '101.7456° E' },
@@ -36,6 +38,7 @@ const stations = [
     ph: 6.2,
     tds: 342,
     turbidity: 3.8,
+    do_mgl: 4.2,
     score: 41,
     lastUpdated: 'Just now',
     coords: { lat: '3.0738° N', lng: '101.5183° E' },
@@ -48,6 +51,7 @@ const stations = [
     ph: 7.2,
     tds: 98,
     turbidity: 0.2,
+    do_mgl: 7.8,
     score: 94,
     lastUpdated: 'Just now',
     coords: { lat: '3.0361° N', lng: '101.4048° E' },
@@ -60,6 +64,7 @@ const stations = [
     ph: 7.4,
     tds: 78,
     turbidity: 0.1,
+    do_mgl: 8.1,
     score: 97,
     lastUpdated: '3 min ago',
     coords: { lat: '3.2715° N', lng: '101.6408° E' },
@@ -72,6 +77,7 @@ const stations = [
     ph: 7.0,
     tds: 164,
     turbidity: 0.9,
+    do_mgl: 6.4,
     score: 74,
     lastUpdated: '5 min ago',
     coords: { lat: '3.1579° N', lng: '101.7027° E' },
@@ -84,6 +90,7 @@ const stations = [
     ph: 7.3,
     tds: 55,
     turbidity: 0.05,
+    do_mgl: 8.5,
     score: 99,
     lastUpdated: '1 min ago',
     coords: { lat: '5.9876° N', lng: '100.5714° E' },
@@ -96,6 +103,7 @@ const stations = [
     ph: 7.1,
     tds: 90,
     turbidity: 0.2,
+    do_mgl: 7.5,
     score: 93,
     lastUpdated: '4 min ago',
     coords: { lat: '4.0281° N', lng: '101.0917° E' },
@@ -220,11 +228,12 @@ function StationCard({ station, index, inView }) {
       </div>
 
       {/* Metrics row */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {[
           { label: 'pH', value: station.ph, unit: '' },
           { label: 'TDS', value: station.tds, unit: 'ppm' },
           { label: 'Turb', value: station.turbidity, unit: 'NTU' },
+          { label: 'DO', value: station.do_mgl, unit: 'mg/L' },
         ].map(m => (
           <div
             key={m.label}
@@ -326,6 +335,7 @@ export default function StationsPage() {
       ph: live.ph,
       tds: live.tds,
       turbidity: live.turbidity,
+      do_mgl: live.do_mgl,
       score: live.quality_score,
       status: live.status,
       lastUpdated: new Date(live.created_at).toLocaleTimeString(),
