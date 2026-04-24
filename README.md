@@ -51,9 +51,11 @@ create table sensor_readings (
   ph_mv         integer,
   tds_mv        integer,
   turb_v        numeric(6,3),
+  do_v          numeric(6,3),
   ph            numeric(4,2),
   tds           numeric(6,1),
   turbidity     numeric(6,3),
+  do_mgl        numeric(5,2),
   quality_score integer,
   status        text          default 'NOMINAL',
   checksum      text,
@@ -65,6 +67,12 @@ create policy "anon_read"   on sensor_readings for select to anon using (true);
 create policy "anon_insert" on sensor_readings for insert to anon with check (true);
 
 alter publication supabase_realtime add table sensor_readings;
+```
+
+If the table already exists and you're adding DO support:
+```sql
+alter table sensor_readings add column do_v   numeric(6,3);
+alter table sensor_readings add column do_mgl numeric(5,2);
 ```
 
 To clear the database periodically:
@@ -80,7 +88,7 @@ delete from sensor_readings;
 |---|---|
 | `/` | Landing page — mission, how it works, impact |
 | `/stations` | All 8 monitoring stations with live status |
-| `/dashboard` | Deep-dive per-station with charts and compliance |
+| `/dashboard` | Deep-dive per-station with live charts and compliance |
 | `/demo` | Private pipeline simulator — fires raw sensor packets |
 | `/about` | Company identity and mission |
 
@@ -106,14 +114,14 @@ There is no separate backend. The Vite app talks directly to Supabase via the an
 
 | ID | Name | Area | Typical Profile |
 |---|---|---|---|
-| KLR-04 | Klang R. — Stn 04 | Klang River | pH 7.2, TDS 98 ppm, 0.2 NTU |
-| KLR-01 | Klang R. — Stn 01 | Klang River | pH 7.1, TDS 112 ppm, 0.3 NTU |
-| KLR-02 | Klang R. — Stn 02 | Klang River | pH 6.8, TDS 198 ppm, 1.4 NTU |
-| KLR-03 | Klang R. — Stn 03 | Klang River | pH 6.2, TDS 342 ppm, 3.8 NTU ⚠️ |
-| GOM-01 | Gombak — Stn 01 | Gombak | pH 7.4, TDS 78 ppm, 0.1 NTU ✓ |
-| GOM-02 | Gombak — Stn 02 | Gombak | pH 7.0, TDS 164 ppm, 0.9 NTU |
-| PND-01 | Pendang Reservoir | Pendang | pH 7.3, TDS 55 ppm, 0.05 NTU ✓ |
-| PEL-01 | Pelus — Stn 01 | Pelus | pH 7.1, TDS 90 ppm, 0.2 NTU |
+| KLR-04 | Klang R. — Stn 04 | Klang River | pH 7.2, TDS 98 ppm, 0.2 NTU, DO 7.5 mg/L |
+| KLR-01 | Klang R. — Stn 01 | Klang River | pH 7.1, TDS 112 ppm, 0.3 NTU, DO 8.5 mg/L |
+| KLR-02 | Klang R. — Stn 02 | Klang River | pH 6.8, TDS 198 ppm, 1.4 NTU, DO 7.0 mg/L |
+| KLR-03 | Klang R. — Stn 03 | Klang River | pH 6.2, TDS 342 ppm, 3.8 NTU, DO 5.5 mg/L ⚠️ |
+| GOM-01 | Gombak — Stn 01 | Gombak | pH 7.4, TDS 78 ppm, 0.1 NTU, DO 9.0 mg/L ✓ |
+| GOM-02 | Gombak — Stn 02 | Gombak | pH 7.0, TDS 164 ppm, 0.9 NTU, DO 7.2 mg/L |
+| PND-01 | Pendang Reservoir | Pendang | pH 7.3, TDS 55 ppm, 0.05 NTU, DO 8.8 mg/L ✓ |
+| PEL-01 | Pelus — Stn 01 | Pelus | pH 7.1, TDS 90 ppm, 0.2 NTU, DO 8.2 mg/L |
 
 KLR-03 consistently reads WARNING/ALERT — intentional, reflects real upstream contamination profile.
 
@@ -121,7 +129,7 @@ KLR-03 consistently reads WARNING/ALERT — intentional, reflects real upstream 
 
 ## Sensor Data & Calibration
 
-Hardware model: **ESP32** with 3 analog probes.
+Hardware model: **ESP32** with 4 analog probes.
 
 ### Raw → Calibrated
 
@@ -130,16 +138,18 @@ Hardware model: **ESP32** with 3 analog probes.
 | pH | mV from ADC | `pH = 7.0 + (2048 − mV) / 59.16` (Nernst at 25°C) |
 | TDS | mV from ADC | `ppm = (mV / 1000) × 0.64 × 500` |
 | Turbidity | Voltage (0–4.5V) | `NTU = ((4.5 − V) / 0.5)^1.5 × 2.0` |
+| Dissolved O₂ | Voltage (0–3.3V) | `mg/L = (V / 3.3) × 20.0` (galvanic cell) |
 
 ### Quality Score (0–100)
 
-Weighted composite across 3 parameters:
+Weighted composite across 4 parameters:
 
 | Parameter | Weight | Scoring |
 |---|---|---|
-| pH | 40% | 100 pts if 7.0–7.5 → 0 pts if outside 6.5–8.5 |
-| TDS | 30% | 100 pts if <100 ppm → 0 pts if >500 ppm |
-| Turbidity | 30% | 100 pts if <0.1 NTU → 0 pts if >4 NTU |
+| pH | 35% | 100 pts if 7.0–7.5 → 0 pts if outside 6.5–8.5 |
+| TDS | 25% | 100 pts if <100 ppm → 0 pts if >500 ppm |
+| Turbidity | 25% | 100 pts if <0.1 NTU → 0 pts if >4 NTU |
+| Dissolved O₂ | 15% | 100 pts if >8 mg/L → 0 pts if ≤4 mg/L (hypoxic) |
 
 Status thresholds: **NOMINAL** ≥70 · **WARNING** 40–69 · **ALERT** <40
 
@@ -152,10 +162,11 @@ Compliance references: WHO 2022, MS 1500:2019, DOE Class II
 The `/demo` page simulates what a real deployed sensor would do. It is private — not linked from the public nav except via the Dashboard sidebar.
 
 **What it does:**
-1. Generates a realistic raw JSON packet (mV values + device metadata)
+1. Generates a realistic raw JSON packet (mV/voltage values + device metadata)
 2. Animates the 6-step ingestion pipeline visually: Receive → Checksum → Calibrate → Score → Store → Broadcast
 3. Inserts the processed reading into Supabase
 4. All open pages (`/stations`, `/dashboard`) update in real-time via WebSocket
+5. LiveCard turns red/amber and shows an alert banner when status is WARNING or ALERT
 
 **Simulation settings:**
 - Demo interval: **6 seconds** per station (accelerated for visibility)
@@ -175,7 +186,8 @@ The `/demo` page simulates what a real deployed sensor would do. It is private �
   "raw": {
     "ph_mv": 2033,
     "tds_mv": 298,
-    "turb_v": 4.381
+    "turb_v": 4.381,
+    "do_v": 1.241
   },
   "checksum": "a3f7c02e"
 }
@@ -220,7 +232,7 @@ src/
 ├── main.jsx                 # React entry point
 ├── pages/
 │   ├── LandingPage.jsx      # Assembles all landing sections
-│   ├── DashboardPage.jsx    # Per-station live dashboard
+│   ├── DashboardPage.jsx    # Per-station live dashboard with charts
 │   ├── StationsPage.jsx     # Station grid with live status
 │   ├── DemoPage.jsx         # Pipeline simulator
 │   └── AboutPage.jsx        # Company mission and identity
@@ -256,4 +268,5 @@ npm run preview  # preview production build locally
 - **Supabase anon key is public** — this is intentional for a client-side app. RLS policies restrict writes to valid inserts only. Do not use the service role key client-side.
 - **Footer** — intentionally hidden on `/dashboard` and `/demo` (app-like pages). Shown on all others.
 - **KLR-03** will almost always show WARNING or ALERT — its sensor profile is tuned to reflect a higher-contamination source. This is by design.
-- **Realtime** uses Supabase WebSocket channels. Each page subscribes on mount and unsubscribes on unmount. The dashboard re-subscribes when you switch stations.
+- **Realtime** uses Supabase WebSocket channels. Each page subscribes on mount and unsubscribes on unmount. The dashboard re-subscribes when you switch stations and re-fetches history when the time range changes.
+- **DO columns** — if your DB was created before DO support was added, run the two `ALTER TABLE` statements in the Supabase Setup section above. Missing columns will cause inserts to fail silently.
