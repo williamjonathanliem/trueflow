@@ -9,6 +9,7 @@ import DemoPage from './pages/DemoPage'
 import AboutPage from './pages/AboutPage'
 import LiveRobotPage from './pages/LiveRobotPage'
 import Footer from './components/Footer'
+import FloatingChat from './components/FloatingChat'
 
 function Preloader({ done }) {
   return (
@@ -91,6 +92,7 @@ function AppInner({ preloaderDone }) {
           <Route path="/liverobot" element={<LiveRobotPage />} />
         </Routes>
         {!noFooter && <Footer />}
+        <FloatingChat />
       </motion.div>
     </>
   )
