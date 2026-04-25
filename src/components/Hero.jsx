@@ -124,6 +124,7 @@ function DataChip({ label, value, color, style }) {
       transition={{ duration: 3.5 + Math.random(), repeat: Infinity, ease: 'easeInOut' }}
       style={{
         position: 'absolute',
+        zIndex: 2,
         display: 'flex',
         alignItems: 'center',
         gap: 8,
