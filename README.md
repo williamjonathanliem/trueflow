@@ -1,289 +1,174 @@
-# TrueFlow — Water Quality Intelligence Platform
+# TrueFlow
 
-Real-time water quality monitoring across Malaysia. Sensor data flows from hardware bots → Supabase → live UI. Every reading is timestamped, station-attributed, and scored against WHO & Malaysian standards.
+**Real-time water quality intelligence platform — 3rd APU Sustainability Hackathon 2026**
 
-> *Water is meant to be transparent. The data behind it should be too.*
-
----
-
-## Quick Start
-
-```bash
-# 1. Install dependencies
-npm install
-
-# 2. Create .env file (see Environment Variables section)
-
-# 3. Run dev server
-npm run dev
-```
-
-App runs at `http://localhost:5173`
+Live → [trueflow-flo.vercel.app](https://trueflow-flo.vercel.app)
 
 ---
 
-## Environment Variables
+## What It Is
 
-Create a `.env` file in the project root:
+TrueFlow is a real-time water quality monitoring dashboard built for Malaysian river systems. It models a network of IoT sensor stations across the Klang River basin, Gombak River, Pendang Reservoir, and Pelus River — processing raw sensor readings into live quality scores, compliance checks, and actionable alerts.
 
-```env
-VITE_SUPABASE_URL=https://ciqpampmjzbaaxqtacir.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_qH7lxiycZRYUO4UnfqrNAw_pSwmCsoq
-```
-
-These are already in `.env` locally. If you're setting up fresh, ask for the values — do **not** commit `.env` to git.
+It includes **FLO**, a context-grounded AI assistant that answers questions about live station data: *"Is KLR-03 safe right now?"*, *"Which station has the worst turbidity?"*, *"What does ALERT status mean for dissolved oxygen?"* FLO answers against real current readings, not a static knowledge base.
 
 ---
 
-## Supabase Setup (one-time)
+## Features
 
-Go to the Supabase SQL editor → paste and run this schema:
-
-```sql
-create table sensor_readings (
-  id            uuid          default gen_random_uuid() primary key,
-  station_id    text          not null,
-  device_id     text          not null,
-  firmware      text,
-  uptime_s      bigint,
-  battery_pct   integer,
-  signal_rssi   integer,
-  ph_mv         integer,
-  tds_mv        integer,
-  turb_v        numeric(6,3),
-  do_v          numeric(6,3),
-  ph            numeric(4,2),
-  tds           numeric(6,1),
-  turbidity     numeric(6,3),
-  do_mgl        numeric(5,2),
-  quality_score integer,
-  status        text          default 'NOMINAL',
-  checksum      text,
-  created_at    timestamptz   default now()
-);
-
-alter table sensor_readings enable row level security;
-create policy "anon_read"   on sensor_readings for select to anon using (true);
-create policy "anon_insert" on sensor_readings for insert to anon with check (true);
-
-alter publication supabase_realtime add table sensor_readings;
-```
-
-If the table already exists and you're adding DO support:
-```sql
-alter table sensor_readings add column do_v   numeric(6,3);
-alter table sensor_readings add column do_mgl numeric(5,2);
-```
-
-To clear the database periodically:
-```sql
-delete from sensor_readings;
-```
+- **Live dashboard** — 8 monitoring stations, 120-point rolling area charts per parameter
+- **Real-time pipeline** — sensor packets → checksum → calibration → quality score → Supabase → WebSocket broadcast → UI update, all in under a second
+- **Compliance panel** — checks readings against WHO 2022, MS 1500:2019, and DOE Class II standards per station
+- **Alert feed** — flags ALERT / WARNING / NORMAL status with thresholds per parameter
+- **FLO AI assistant** — context-aware chatbot with live sensor data injected into every prompt. Multi-model fallback: if the primary model rate-limits, falls through to 5 alternatives automatically
+- **Demo simulator** — generates realistic sensor packets using calibrated formulas (Nernst equation for pH, galvanic cell model for DO, probe constants for TDS) and pushes them through the full pipeline live
+- **Live injection** — manually inject custom readings per station to test edge cases
 
 ---
 
-## Pages
+## How the Data Pipeline Works
 
-| Route | Description |
+```
+generateRawPacket()           — produces ADC values, RSSI, battery %, firmware, checksum
+      ↓
+processPacket()               — applies calibration formulas, computes 0–100 quality score
+      ↓
+supabase.insert()             — writes to sensor_readings table
+      ↓
+Supabase Realtime (WebSocket) — broadcasts INSERT event to all subscribed clients
+      ↓
+Dashboard / Stations page     — receives event, updates state, re-renders charts
+```
+
+No polling. Pure event-driven via Supabase Realtime WebSocket subscriptions.
+
+---
+
+## How FLO Works
+
+FLO is not a generic chatbot. Before every response, the backend fetches the latest reading from all 8 stations and injects them as structured context into the system prompt:
+
+```
+Station KLR-03 | pH: 6.8 | TDS: 412 ppm | Turbidity: 18 NTU | DO: 5.1 mg/L | Score: 61 | Status: WARNING
+Station GBK-01 | pH: 7.2 | TDS: 280 ppm | Turbidity: 6 NTU  | DO: 7.4 mg/L | Score: 84 | Status: NORMAL
+...
+```
+
+FLO answers from this ground truth. It will not soften an ALERT condition or speculate beyond its data. Full conversation history is maintained across the session.
+
+**Primary model:** `meta-llama/llama-3.2-3b-instruct` via OpenRouter  
+**Fallback chain:** Gemma 3 4B → Mistral 7B → Qwen 2.5 → Phi-4 → (local Ollama if configured)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
 |---|---|
-| `/` | Landing page — mission, how it works, impact |
-| `/stations` | All 8 monitoring stations with live status |
-| `/dashboard` | Deep-dive per-station with live charts and compliance |
-| `/demo` | Private pipeline simulator — fires raw sensor packets |
-| `/liverobot` | Manual data injection — fill in readings per bot and push to Supabase |
-| `/about` | Company identity and mission |
+| Frontend | React 19, Vite 8, React Router 7 |
+| Styling | Tailwind CSS v4 (Vite-native) |
+| Animation | Framer Motion 12 |
+| Charts | Recharts 3 |
+| Markdown rendering | react-markdown (FLO responses) |
+| Database / Realtime | Supabase (PostgreSQL + WebSocket) |
+| AI backend | Node.js + Express, OpenRouter API |
+| Frontend deployment | Vercel |
+| Backend deployment | Render (paused) |
 
 ---
 
 ## Architecture
 
 ```
-Browser (React/Vite)
-  ├── /demo page → generates raw packet → inserts to Supabase
-  ├── Supabase Realtime (WebSocket) → pushes INSERT events to all open pages
-  ├── /stations → listens for all station updates
-  └── /dashboard → listens for updates on the selected station
+Browser
+  ├── Supabase JS client (direct — anon key, read/insert)
+  │     └── Realtime subscription per page
+  └── FLO chat widget → POST /chat → Express backend (Render)
+                              └── fetch live Supabase readings
+                              └── build context-injected prompt
+                              └── OpenRouter API (Llama 3.2 + fallbacks)
 ```
 
-There is no separate backend. The Vite app talks directly to Supabase via the anon key. In production, real ESP32 sensors would POST to a Supabase Edge Function instead of the browser inserting directly.
+The frontend connects to Supabase directly for data. The Express backend exists solely to serve the AI chatbot — it fetches live readings, builds the prompt, and proxies to OpenRouter. Separating the AI backend from the frontend keeps the API key server-side.
+
+> **Note:** In a production deployment, the Express backend would be replaced with a Supabase Edge Function to eliminate the separate server. The current architecture is intentional for prototype speed.
 
 ---
 
-## Stations
+## Sensors (Simulated)
 
-8 monitoring stations across 3 areas:
+No physical hardware is deployed. The demo pipeline simulates what ESP32 nodes with DFRobot sensor probes would produce — using the same calibration formulas a real deployment would use:
 
-| ID | Name | Area | Typical Profile |
-|---|---|---|---|
-| KLR-04 | Klang R. — Stn 04 | Klang River | pH 7.2, TDS 98 ppm, 0.2 NTU, DO 7.5 mg/L |
-| KLR-01 | Klang R. — Stn 01 | Klang River | pH 7.1, TDS 112 ppm, 0.3 NTU, DO 8.5 mg/L |
-| KLR-02 | Klang R. — Stn 02 | Klang River | pH 6.8, TDS 198 ppm, 1.4 NTU, DO 7.0 mg/L |
-| KLR-03 | Klang R. — Stn 03 | Klang River | pH 6.2, TDS 342 ppm, 3.8 NTU, DO 5.5 mg/L ⚠️ |
-| GOM-01 | Gombak — Stn 01 | Gombak | pH 7.4, TDS 78 ppm, 0.1 NTU, DO 9.0 mg/L ✓ |
-| GOM-02 | Gombak — Stn 02 | Gombak | pH 7.0, TDS 164 ppm, 0.9 NTU, DO 7.2 mg/L |
-| PND-01 | Pendang Reservoir | Pendang | pH 7.3, TDS 55 ppm, 0.05 NTU, DO 8.8 mg/L ✓ |
-| PEL-01 | Pelus — Stn 01 | Pelus | pH 7.1, TDS 90 ppm, 0.2 NTU, DO 8.2 mg/L |
-
-KLR-03 consistently reads WARNING/ALERT — intentional, reflects real upstream contamination profile.
-
----
-
-## Sensor Data & Calibration
-
-Hardware model: **ESP32** with 4 analog probes.
-
-### Raw → Calibrated
-
-| Sensor | Raw | Calibration Formula |
-|---|---|---|
-| pH | mV from ADC | `pH = 7.0 + (2048 − mV) / 59.16` (Nernst at 25°C) |
-| TDS | mV from ADC | `ppm = (mV / 1000) × 0.64 × 500` |
-| Turbidity | Voltage (0–4.5V) | `NTU = ((4.5 − V) / 0.5)^1.5 × 2.0` |
-| Dissolved O₂ | Voltage (0–3.3V) | `mg/L = (V / 3.3) × 20.0` (galvanic cell) |
-
-### Quality Score (0–100)
-
-Weighted composite across 4 parameters:
-
-| Parameter | Weight | Scoring |
-|---|---|---|
-| pH | 35% | 100 pts if 7.0–7.5 → 0 pts if outside 6.5–8.5 |
-| TDS | 25% | 100 pts if <100 ppm → 0 pts if >500 ppm |
-| Turbidity | 25% | 100 pts if <0.1 NTU → 0 pts if >4 NTU |
-| Dissolved O₂ | 15% | 100 pts if >8 mg/L → 0 pts if ≤4 mg/L (hypoxic) |
-
-Status thresholds: **NOMINAL** ≥70 · **WARNING** 40–69 · **ALERT** <40
-
-Compliance references: WHO 2022, MS 1500:2019, DOE Class II
-
----
-
-## Live Robot (`/liverobot`)
-
-The `/liverobot` page lets you manually inject sensor readings for any station without going through the automated demo cycle. Useful for testing specific edge cases — e.g. pushing a critically low pH to see how the dashboard and stations page react.
-
-**How it works:**
-- 8 bot cards, one per station
-- Each card has 4 input fields: pH, TDS, Turbidity, Dissolved O₂
-- All 4 fields must be filled before sending — partial submissions are blocked with a warning
-- On send, the row is inserted directly into `sensor_readings` with `device_id: {STATION_ID}-SIM` and `firmware: SIM-v1.0`
-- Success/error feedback appears inline on the card
-- All open `/stations` and `/dashboard` pages update via realtime
-
-**Note:** Footer is hidden on this page (same as `/dashboard` and `/demo`).
-
----
-
-## Demo Pipeline (`/demo`)
-
-The `/demo` page simulates what a real deployed sensor would do. It is private — not linked from the public nav except via the Dashboard sidebar.
-
-**What it does:**
-1. Generates a realistic raw JSON packet (mV/voltage values + device metadata)
-2. Animates the 6-step ingestion pipeline visually: Receive → Checksum → Calibrate → Score → Store → Broadcast
-3. Inserts the processed reading into Supabase
-4. All open pages (`/stations`, `/dashboard`) update in real-time via WebSocket
-5. LiveCard turns red/amber and shows an alert banner when status is WARNING or ALERT
-
-**Simulation settings:**
-- Demo interval: **6 seconds** per station (accelerated for visibility)
-- Production equivalent: **every 5 minutes** per station (10 checks/hour)
-- With 8 stations: **80 Supabase inserts/hour** in production
-- Cycles through all 8 stations in rotation
-
-**Raw packet shape (what FLO hardware would POST):**
-```json
-{
-  "device_id": "FLO-KLR-04",
-  "firmware": "v2.1.3",
-  "uptime_s": 9483729,
-  "battery_pct": 91,
-  "signal_rssi": -63,
-  "ts": 1713884729,
-  "raw": {
-    "ph_mv": 2033,
-    "tds_mv": 298,
-    "turb_v": 4.381,
-    "do_v": 1.241
-  },
-  "checksum": "a3f7c02e"
-}
-```
-
----
-
-## Tech Stack
-
-| Layer | Tech |
+| Parameter | Model |
 |---|---|
-| Framework | React 19 + Vite 8 |
-| Routing | react-router-dom v7 |
-| Styling | Tailwind CSS v4 |
-| Animation | Framer Motion v12 |
-| Charts | Recharts v3 |
-| Database | Supabase (PostgreSQL + Realtime) |
+| pH | Nernst equation (voltage → pH) |
+| TDS | Probe constant method (EC → ppm) |
+| Turbidity | Voltage-curve interpolation (NTU) |
+| Dissolved Oxygen | Galvanic cell (mV → mg/L) |
 
-### Fonts
-- **Syne** — labels, badges, nav
-- **Plus Jakarta Sans** — headlines
-- **JetBrains Mono** — data values, terminal, numbers
-- **Inter** — body text
-
-### Color Palette
-```
-#020d18   dark background
-#051a2d   section background
-#0ea5e9   primary blue
-#0369a1   deep blue
-#7dd3fc   shimmer / highlight
-#f0f8ff   light text
-```
+The architecture is designed to accept real hardware with no frontend changes — swap `generateRawPacket()` for actual ESP32 POST requests and the rest of the pipeline is identical.
 
 ---
 
-## File Structure
+## Local Setup
 
-```
-src/
-├── App.jsx                  # Router, preloader, footer visibility logic
-├── main.jsx                 # React entry point
-├── pages/
-│   ├── LandingPage.jsx      # Assembles all landing sections
-│   ├── DashboardPage.jsx    # Per-station live dashboard with charts
-│   ├── StationsPage.jsx     # Station grid with live status
-│   ├── DemoPage.jsx         # Pipeline simulator
-│   └── AboutPage.jsx        # Company mission and identity
-├── components/
-│   ├── Navbar.jsx           # Sticky frosted-glass nav
-│   ├── Footer.jsx           # Site footer (hidden on /dashboard and /demo)
-│   ├── Hero.jsx             # Landing hero with canvas animation
-│   ├── Problem.jsx          # Problem statement section
-│   ├── HowItWorks.jsx       # 3-step explainer
-│   ├── Dashboard.jsx        # Dashboard preview section on landing
-│   ├── Impact.jsx           # SDG6 impact section
-│   ├── Team.jsx             # Team section
-│   └── ClosingCTA.jsx       # Final CTA section
-└── lib/
-    ├── supabase.js          # Supabase client (reads from .env)
-    └── dataProcessor.js     # Calibration formulas, station profiles, scoring
-```
+### Prerequisites
+- Node.js 18+
+- Supabase project with `sensor_readings` table and Realtime enabled
+- OpenRouter API key (free tier works)
 
----
-
-## Build
+### Frontend
 
 ```bash
-npm run build    # outputs to /dist
-npm run preview  # preview production build locally
+git clone https://github.com/williamjonathanliem/trueflow
+cd trueflow
+npm install
 ```
+
+Create `.env`:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+VITE_CHATBOT_URL=http://localhost:3001
+```
+
+```bash
+npm run dev
+```
+
+### Backend (AI chatbot)
+
+```bash
+cd backend
+npm install
+```
+
+Create `backend/.env`:
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+OPENROUTER_API_KEY=your_openrouter_key
+
+# Optional — use local Ollama instead of OpenRouter
+USE_OLLAMA=false
+```
+
+```bash
+node server.js
+```
+
+### Database
+
+Run the SQL schema in your Supabase SQL editor to create the `sensor_readings` table and enable the Realtime publication. Schema file is in `supabase/`.
 
 ---
 
-## Notes for Teammates
+## Hackathon Context
 
-- **No sensors yet** — the demo page simulates what real hardware would send. The calibration formulas and station profiles are based on real sensor specs (ESP32 + DFRobot probes).
-- **Supabase anon key is public** — this is intentional for a client-side app. RLS policies restrict writes to valid inserts only. Do not use the service role key client-side.
-- **Footer** — intentionally hidden on `/dashboard`, `/demo`, and `/liverobot` (app-like pages). Shown on all others.
-- **KLR-03** will almost always show WARNING or ALERT — its sensor profile is tuned to reflect a higher-contamination source. This is by design.
-- **Realtime** uses Supabase WebSocket channels. Each page subscribes on mount and unsubscribes on unmount. The dashboard re-subscribes when you switch stations and re-fetches history when the time range changes.
-- **DO columns** — if your DB was created before DO support was added, run the two `ALTER TABLE` statements in the Supabase Setup section above. Missing columns will cause inserts to fail silently.
+Submitted to the **3rd APU Sustainability Hackathon 2026**, themed around tech-driven solutions for real-world sustainability challenges. Stage 2 was a full-day build event at Asia Pacific University on 25th April 2026, competing for RM3,200 in prizes with a pathway to the France Ocean Hackathon.
+
+---
+
+## License
+
+MIT
